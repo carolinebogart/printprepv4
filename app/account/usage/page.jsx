@@ -101,7 +101,7 @@ export default async function UsagePage() {
             style={{ width: `${creditsPercent}%` }}
           />
         </div>
-        {creditsRemaining < 10 && creditsPerPeriod > 0 && (
+        {creditsRemaining < 10 && creditsTotal > 0 && (
           <p className="text-xs text-amber-600 mt-1">
             Low credits — <a href="/pricing" className="underline">upgrade your plan</a>
           </p>
