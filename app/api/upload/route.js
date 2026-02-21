@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { getImageInfo } from '@/lib/image-processor';
 import { getRatiosForOrientation } from '@/lib/output-sizes';
-import { v4 as uuidv4 } from 'crypto';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -116,7 +115,7 @@ export async function POST(request) {
       })),
     });
   } catch (error) {
-    console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Upload error:', error?.message, error?.stack);
+    return NextResponse.json({ error: error?.message || 'Internal server error' }, { status: 500 });
   }
 }
