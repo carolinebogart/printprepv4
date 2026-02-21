@@ -66,7 +66,7 @@ export async function POST(request) {
 
     // Generate unique filename and upload
     const imageId = crypto.randomUUID();
-    const storagePath = `uploads/${imageId}.${ext}`;
+    const storagePath = `${user.id}/${imageId}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from('printprep-images')

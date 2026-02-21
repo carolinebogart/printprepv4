@@ -66,7 +66,7 @@ export async function POST(request) {
         continue;
       }
 
-      const storagePath = `outputs/${imageId}/${result.filename}`;
+      const storagePath = `${user.id}/outputs/${imageId}/${result.filename}`;
 
       // Upload to storage
       const { error: uploadError } = await serviceClient.storage
