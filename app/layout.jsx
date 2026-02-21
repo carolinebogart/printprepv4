@@ -1,4 +1,5 @@
 import './globals.css';
+import CreditsBadge from '../components/CreditsBadge.jsx';
 
 export const metadata = {
   title: 'PrintPrep — Resize Artwork for Print',
@@ -88,19 +89,13 @@ async function Nav() {
               </a>
             )}
 
-            {/* Credits badge */}
+            {/* Credits badge — client component that refreshes on navigation */}
             {user && isActive && (
-              <span
-                className={`credit-badge ${
-                  creditsRemaining <= 0
-                    ? 'empty'
-                    : creditsRemaining < 10
-                      ? 'low'
-                      : 'healthy'
-                }`}
-              >
-                {creditsRemaining}/{creditsTotal} credits
-              </span>
+              <CreditsBadge
+                initialRemaining={creditsRemaining}
+                initialTotal={creditsTotal}
+                initialActive={isActive}
+              />
             )}
 
             {/* Auth */}
