@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+  min-height: 100vh;
+}
+
+/* Flash messages / toast */
+.flash-success {
+  @apply bg-green-100 text-green-800 border border-green-200 rounded-lg px-4 py-3;
+}
+
+.flash-error {
+  @apply bg-red-100 text-red-800 border border-red-200 rounded-lg px-4 py-3;
+}
+
+.flash-info {
+  @apply bg-blue-100 text-blue-800 border border-blue-200 rounded-lg px-4 py-3;
+}
+
+.flash-warning {
+  @apply bg-yellow-100 text-yellow-800 border border-yellow-200 rounded-lg px-4 py-3;
+}
+
+/* Drop zone styling */
+.drop-zone {
+  @apply border-2 border-dashed border-gray-300 rounded-xl p-8 text-center transition-all duration-200 cursor-pointer;
+}
+
+.drop-zone:hover,
+.drop-zone.drag-over {
+  @apply border-blue-500 bg-blue-50 scale-[1.01];
+}
+
+/* Credit badge */
+.credit-badge {
+  @apply inline-flex items-center gap-1 text-sm font-medium px-2.5 py-0.5 rounded-full;
+}
+
+.credit-badge.healthy {
+  @apply bg-green-100 text-green-800;
+}
+
+.credit-badge.low {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.credit-badge.empty {
+  @apply bg-red-100 text-red-800;
+}
+
+/* Status badges */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge-active {
+  @apply bg-green-100 text-green-800;
+}
+
+.badge-cancelled {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.badge-inactive {
+  @apply bg-gray-100 text-gray-600;
+}
+
+.badge-admin {
+  @apply bg-purple-100 text-purple-800;
+}
+
+/* Buttons */
+.btn {
+  @apply inline-flex items-center justify-center font-medium rounded-lg px-4 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center font-medium rounded-lg px-4 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center font-medium rounded-lg px-4 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400;
+}
+
+.btn-danger {
+  @apply inline-flex items-center justify-center font-medium rounded-lg px-4 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+}
+
+.btn-sm {
+  @apply text-sm px-3 py-1.5;
+}

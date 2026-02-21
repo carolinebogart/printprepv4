@@ -1,0 +1,141 @@
+import './globals.css';
+
+export const metadata = {
+  title: 'PrintPrep — Resize Artwork for Print',
+  description: 'Resize your digital artwork to multiple print-ready formats at 300 DPI. Built for Etsy digital printable sellers.',
+};
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body className="flex flex-col min-h-screen">
+        <Nav />
+        <main className="flex-1">{children}</main>
+        <Footer />
+      </body>
+    </html>
+  );
+}
+
+async function Nav() {
+  // Server component — can check auth
+  const { createClient } = await import('@/lib/supabase/server');
+  let user = null;
+  let subscription = null;
+  let isAdmin = false;
+
+  try {
+    const supabase = await createClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    user = authUser;
+
+    if (user) {
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('credits_total, credits_used, plan_name, status')
+        .eq('user_id', user.id)
+        .single();
+      subscription = sub;
+
+      const { data: admin } = await supabase
+        .from('admin_users')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .single();
+      if (admin) isAdmin = true;
+    }
+  } catch {
+    // Not authenticated or error — that's fine
+  }
+
+  const creditsRemaining = subscription
+    ? Math.max(0, subscription.credits_total - subscription.credits_used)
+    : 0;
+  const creditsTotal = subscription?.credits_total || 0;
+  const isActive = subscription?.status === 'active' ||
+    (subscription?.status === 'cancelled' && creditsRemaining > 0);
+
+  return (
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <a href="/" className="text-xl font-bold text-blue-600 hover:text-blue-700">
+            PrintPrep
+          </a>
+
+          {/* Nav links */}
+          <nav className="flex items-center gap-4">
+            <a href="/pricing" className="text-sm text-gray-600 hover:text-gray-900">
+              Pricing
+            </a>
+
+            {user && (
+              <>
+                <a href="/history" className="text-sm text-gray-600 hover:text-gray-900">
+                  History
+                </a>
+                <a href="/account" className="text-sm text-gray-600 hover:text-gray-900">
+                  Account
+                </a>
+              </>
+            )}
+
+            {isAdmin && (
+              <a href="/admin" className="text-sm text-purple-600 hover:text-purple-800 font-medium">
+                Admin
+              </a>
+            )}
+
+            {/* Credits badge */}
+            {user && isActive && (
+              <span
+                className={`credit-badge ${
+                  creditsRemaining <= 0
+                    ? 'empty'
+                    : creditsRemaining < 10
+                      ? 'low'
+                      : 'healthy'
+                }`}
+              >
+                {creditsRemaining}/{creditsTotal} credits
+              </span>
+            )}
+
+            {/* Auth */}
+            {user ? (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-500">{user.email}</span>
+                <form action="/api/auth/logout" method="POST">
+                  <button type="submit" className="text-sm text-gray-600 hover:text-gray-900">
+                    Logout
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <a href="/auth/login" className="text-sm text-gray-600 hover:text-gray-900">
+                  Login
+                </a>
+                <a href="/auth/register" className="btn-primary btn-sm">
+                  Sign Up
+                </a>
+              </div>
+            )}
+          </nav>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="bg-white border-t border-gray-200 py-6 mt-12">
+      <div className="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">
+        <p>PrintPrep — Resize your artwork to every print format, at 300 DPI, in seconds.</p>
+      </div>
+    </footer>
+  );
+}

@@ -1,0 +1,489 @@
+'use client';
+
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Cropper from 'react-cropper';
+import 'cropperjs/dist/cropper.css';
+
+export default function CropTool({
+  imageId,
+  imageUrl,
+  originalWidth,
+  originalHeight,
+  originalRatio,
+  orientation,
+  ratios,
+}) {
+  const router = useRouter();
+  const cropperRef = useRef(null);
+
+  // Which ratios are selected
+  const [selectedRatios, setSelectedRatios] = useState(() =>
+    ratios.reduce((acc, r) => ({ ...acc, [r.key]: false }), {})
+  );
+
+  // Current ratio being edited
+  const [activeRatio, setActiveRatio] = useState(null);
+
+  // Per-ratio crop state
+  const [cropStates, setCropStates] = useState(() =>
+    ratios.reduce((acc, r) => ({
+      ...acc,
+      [r.key]: {
+        canvasData: null,
+        cropBoxData: null,
+        sizes: r.sizes,
+        backgroundColor: '#FFFFFF',
+        useShadow: false,
+      },
+    }), {})
+  );
+
+  // Eyedropper
+  const [eyedropperActive, setEyedropperActive] = useState(false);
+
+  // Processing state
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Get ordered list of selected ratios
+  const selectedRatioKeys = ratios
+    .filter((r) => selectedRatios[r.key])
+    .map((r) => r.key);
+
+  const currentIndex = selectedRatioKeys.indexOf(activeRatio);
+
+  // Save current crop state before switching
+  const saveCropState = useCallback(() => {
+    const cropper = cropperRef.current?.cropper;
+    if (!cropper || !activeRatio) return;
+
+    setCropStates((prev) => ({
+      ...prev,
+      [activeRatio]: {
+        ...prev[activeRatio],
+        canvasData: cropper.getCanvasData(),
+        cropBoxData: cropper.getCropBoxData(),
+      },
+    }));
+  }, [activeRatio]);
+
+  // Switch to a ratio
+  const switchToRatio = useCallback((ratioKey) => {
+    saveCropState();
+    setActiveRatio(ratioKey);
+  }, [saveCropState]);
+
+  // Restore crop state when ratio changes
+  useEffect(() => {
+    if (!activeRatio) return;
+    const cropper = cropperRef.current?.cropper;
+    if (!cropper) return;
+
+    const ratio = ratios.find((r) => r.key === activeRatio);
+    if (!ratio) return;
+
+    // Set aspect ratio
+    cropper.setAspectRatio(ratio.ratio);
+
+    // Restore saved state if exists
+    const state = cropStates[activeRatio];
+    if (state.canvasData) {
+      setTimeout(() => {
+        cropper.setCanvasData(state.canvasData);
+        if (state.cropBoxData) cropper.setCropBoxData(state.cropBoxData);
+      }, 50);
+    }
+  }, [activeRatio]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Toggle ratio selection
+  const toggleRatio = (key) => {
+    setSelectedRatios((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      // If turning on and no active ratio, make this active
+      if (next[key] && !activeRatio) {
+        setActiveRatio(key);
+      }
+      // If turning off the active ratio, switch to next selected
+      if (!next[key] && activeRatio === key) {
+        const remaining = ratios.filter((r) => next[r.key]).map((r) => r.key);
+        setActiveRatio(remaining[0] || null);
+      }
+      return next;
+    });
+  };
+
+  // Toggle size selection within a ratio
+  const toggleSize = (ratioKey, sizeIndex) => {
+    setCropStates((prev) => {
+      const sizes = [...prev[ratioKey].sizes];
+      sizes[sizeIndex] = { ...sizes[sizeIndex], selected: !sizes[sizeIndex].selected };
+      return { ...prev, [ratioKey]: { ...prev[ratioKey], sizes } };
+    });
+  };
+
+  // Background color
+  const setBackgroundColor = (ratioKey, color) => {
+    setCropStates((prev) => ({
+      ...prev,
+      [ratioKey]: { ...prev[ratioKey], backgroundColor: color },
+    }));
+  };
+
+  // Shadow toggle
+  const toggleShadow = (ratioKey) => {
+    setCropStates((prev) => ({
+      ...prev,
+      [ratioKey]: { ...prev[ratioKey], useShadow: !prev[ratioKey].useShadow },
+    }));
+  };
+
+  // Eyedropper: pick color from image
+  const handleEyedropper = useCallback((e) => {
+    if (!eyedropperActive || !activeRatio) return;
+
+    const cropper = cropperRef.current?.cropper;
+    if (!cropper) return;
+
+    // Get canvas element
+    const canvas = cropper.getCroppedCanvas();
+    if (!canvas) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Create temp canvas to sample pixel
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = 1;
+    tempCanvas.height = 1;
+    const ctx = tempCanvas.getContext('2d');
+
+    // Scale coordinates to canvas space
+    const containerData = cropper.getContainerData();
+    const scaleX = canvas.width / containerData.width;
+    const scaleY = canvas.height / containerData.height;
+
+    ctx.drawImage(canvas, x * scaleX, y * scaleY, 1, 1, 0, 0, 1, 1);
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+
+    setBackgroundColor(activeRatio, hex);
+    setEyedropperActive(false);
+  }, [eyedropperActive, activeRatio]);
+
+  // Navigation between ratios
+  const goNext = () => {
+    if (currentIndex < selectedRatioKeys.length - 1) {
+      switchToRatio(selectedRatioKeys[currentIndex + 1]);
+    }
+  };
+
+  const goPrev = () => {
+    if (currentIndex > 0) {
+      switchToRatio(selectedRatioKeys[currentIndex - 1]);
+    }
+  };
+
+  // Zoom controls
+  const zoomIn = () => cropperRef.current?.cropper?.zoom(0.1);
+  const zoomOut = () => cropperRef.current?.cropper?.zoom(-0.1);
+  const resetCrop = () => cropperRef.current?.cropper?.reset();
+
+  // Generate all outputs
+  const handleGenerate = async () => {
+    saveCropState();
+    setProcessing(true);
+    setError(null);
+
+    // Collect crop data for all selected ratios
+    const cropper = cropperRef.current?.cropper;
+    const allCropData = [];
+
+    for (const ratioKey of selectedRatioKeys) {
+      const state = cropStates[ratioKey];
+      const selectedSizes = state.sizes.filter((s) => s.selected);
+      if (selectedSizes.length === 0) continue;
+
+      // Get crop box data — we need to switch to each ratio to get accurate data
+      // For the active ratio, get it live; for others, use saved state
+      let cropData;
+      if (ratioKey === activeRatio && cropper) {
+        const cd = cropper.getCropData?.() || cropper.getData();
+        cropData = { x: cd.x, y: cd.y, width: cd.width, height: cd.height };
+      } else if (state.cropBoxData && state.canvasData) {
+        // Reconstruct crop coordinates from saved cropper state
+        cropData = {
+          x: state.cropBoxData.left - state.canvasData.left,
+          y: state.cropBoxData.top - state.canvasData.top,
+          width: state.cropBoxData.width * (state.canvasData.naturalWidth / state.canvasData.width),
+          height: state.cropBoxData.height * (state.canvasData.naturalHeight / state.canvasData.height),
+        };
+      } else {
+        continue;
+      }
+
+      allCropData.push({
+        ratioKey,
+        cropData,
+        sizes: selectedSizes.map((s) => ({
+          width: s.width,
+          height: s.height,
+          label: s.label,
+        })),
+        backgroundColor: state.backgroundColor,
+        useShadow: state.useShadow,
+      });
+    }
+
+    if (allCropData.length === 0) {
+      setError('No sizes selected. Please select at least one size.');
+      setProcessing(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageId, cropConfigs: allCropData }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Processing failed.');
+        setProcessing(false);
+        return;
+      }
+
+      router.push(`/download?imageId=${imageId}`);
+    } catch {
+      setError('Processing failed. Please try again.');
+      setProcessing(false);
+    }
+  };
+
+  const activeRatioData = ratios.find((r) => r.key === activeRatio);
+  const activeState = activeRatio ? cropStates[activeRatio] : null;
+
+  // Sacrifice direction
+  const sacrificeDir = activeRatioData
+    ? getSacrificeDir(originalRatio, activeRatioData.ratio)
+    : 'none';
+
+  return (
+    <div className="flex h-full">
+      {/* Left sidebar — ratio selection */}
+      <div className="w-72 bg-white border-r border-gray-200 overflow-y-auto p-4 flex-shrink-0">
+        <h2 className="font-semibold text-gray-900 mb-3">Select Ratios</h2>
+
+        {ratios.map((r) => (
+          <div key={r.key} className="mb-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedRatios[r.key]}
+                onChange={() => toggleRatio(r.key)}
+                className="rounded border-gray-300"
+              />
+              <span
+                className={`text-sm font-medium ${
+                  activeRatio === r.key ? 'text-blue-600' : 'text-gray-700'
+                }`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (selectedRatios[r.key]) switchToRatio(r.key);
+                }}
+              >
+                {r.name}
+              </span>
+            </label>
+
+            {/* Size checkboxes when this ratio is active */}
+            {selectedRatios[r.key] && activeRatio === r.key && (
+              <div className="ml-6 mt-1 space-y-1">
+                {cropStates[r.key].sizes.map((size, i) => (
+                  <label key={size.label} className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={size.selected}
+                      onChange={() => toggleSize(r.key, i)}
+                      className="rounded border-gray-300"
+                    />
+                    {size.label} in ({Math.round(size.width * 300)}×{Math.round(size.height * 300)} px)
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Options for active ratio */}
+        {activeRatio && activeState && (
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Background</h3>
+
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="color"
+                value={activeState.backgroundColor === 'transparent' ? '#ffffff' : activeState.backgroundColor}
+                onChange={(e) => setBackgroundColor(activeRatio, e.target.value)}
+                className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
+              />
+              <div
+                className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center cursor-pointer text-xs"
+                style={{
+                  background: activeState.backgroundColor === 'transparent'
+                    ? 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 12px 12px'
+                    : activeState.backgroundColor,
+                }}
+                title="Current color"
+              />
+            </div>
+
+            <div className="flex gap-2 mb-3">
+              <button
+                onClick={() => setEyedropperActive(!eyedropperActive)}
+                className={`text-xs px-2 py-1 rounded border ${
+                  eyedropperActive
+                    ? 'bg-blue-100 border-blue-300 text-blue-700'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                🔍 Eyedropper
+              </button>
+              <button
+                onClick={() => setBackgroundColor(activeRatio, 'transparent')}
+                className={`text-xs px-2 py-1 rounded border ${
+                  activeState.backgroundColor === 'transparent'
+                    ? 'bg-blue-100 border-blue-300 text-blue-700'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Transparent
+              </button>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={activeState.useShadow}
+                onChange={() => toggleShadow(activeRatio)}
+                className="rounded border-gray-300"
+              />
+              Drop shadow
+            </label>
+
+            {/* Sacrifice direction info */}
+            <div className="mt-3 text-xs text-gray-500">
+              {sacrificeDir === 'none' && '✓ Ratios match — no cropping needed'}
+              {sacrificeDir === 'horizontal' && '← → Will sacrifice left/right'}
+              {sacrificeDir === 'vertical' && '↑ ↓ Will sacrifice top/bottom'}
+            </div>
+          </div>
+        )}
+
+        {/* Generate button */}
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          {error && <div className="flash-error text-xs mb-2">{error}</div>}
+          <button
+            onClick={handleGenerate}
+            disabled={selectedRatioKeys.length === 0 || processing}
+            className="btn-primary w-full py-2.5"
+          >
+            {processing ? 'Processing...' : 'Generate All Sizes'}
+          </button>
+        </div>
+      </div>
+
+      {/* Main crop area */}
+      <div className="flex-1 flex flex-col bg-gray-100">
+        {/* Top bar — navigation + zoom */}
+        <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={goPrev}
+              disabled={currentIndex <= 0}
+              className="btn-secondary btn-sm"
+            >
+              ← Previous
+            </button>
+            <span className="text-sm text-gray-600">
+              {activeRatioData ? (
+                <>
+                  {activeRatioData.name}
+                  {selectedRatioKeys.length > 1 && (
+                    <span className="text-gray-400 ml-1">
+                      ({currentIndex + 1}/{selectedRatioKeys.length})
+                    </span>
+                  )}
+                </>
+              ) : (
+                'Select a ratio to begin'
+              )}
+            </span>
+            <button
+              onClick={goNext}
+              disabled={currentIndex >= selectedRatioKeys.length - 1}
+              className="btn-secondary btn-sm"
+            >
+              Next →
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button onClick={zoomOut} className="btn-secondary btn-sm" title="Zoom out">−</button>
+            <button onClick={zoomIn} className="btn-secondary btn-sm" title="Zoom in">+</button>
+            <button onClick={resetCrop} className="btn-secondary btn-sm" title="Reset">Reset</button>
+          </div>
+        </div>
+
+        {/* Cropper canvas */}
+        <div
+          className={`flex-1 relative ${eyedropperActive ? 'cursor-crosshair' : ''}`}
+          onClick={eyedropperActive ? handleEyedropper : undefined}
+        >
+          {eyedropperActive && (
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-blue-600 text-white text-xs px-3 py-1 rounded-full">
+              Click on the image to pick a color
+            </div>
+          )}
+
+          {activeRatio ? (
+            <Cropper
+              ref={cropperRef}
+              src={imageUrl}
+              style={{ height: '100%', width: '100%' }}
+              aspectRatio={activeRatioData?.ratio}
+              viewMode={0}
+              dragMode="move"
+              cropBoxMovable={false}
+              cropBoxResizable={false}
+              zoomable={true}
+              zoomOnWheel={true}
+              zoomOnTouch={true}
+              autoCropArea={1}
+              responsive={true}
+              restore={false}
+              guides={false}
+              center={false}
+              highlight={false}
+              background={true}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-400">
+              <p className="text-lg">Select at least one ratio from the sidebar to begin cropping</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getSacrificeDir(originalRatio, targetRatio) {
+  if (Math.abs(originalRatio - targetRatio) < 0.01) return 'none';
+  if (targetRatio > originalRatio) return 'horizontal';
+  return 'vertical';
+}

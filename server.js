@@ -12,6 +12,6 @@ app.prepare().then(() => {
     const parsedUrl = parse(req.url, true);
     handle(req, res, parsedUrl);
   }).listen(port, "0.0.0.0", () => {
-    console.log(`> Ready on http://0.0.0.0:${port}`);
+    console.log(`> PrintPrep ready on http://0.0.0.0:${port}`);
   });
 });
