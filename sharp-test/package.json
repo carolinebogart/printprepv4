@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "build": "next build",
-    "start": "node server.js"
+    "start": "next start"
   },
   "dependencies": {
     "next": "latest",
