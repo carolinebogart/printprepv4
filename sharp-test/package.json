@@ -2,7 +2,6 @@
   "name": "sharp-test",
   "version": "1.0.0",
   "scripts": {
-    "preinstall": "npm install --cpu=x64 --os=linux sharp",
     "build": "next build",
     "start": "node server.js"
   },
@@ -10,6 +9,7 @@
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "sharp": "latest"
+    "sharp": "^0.33.5",
+    "@img/sharp-linux-x64": "^0.33.5"
   }
 }
