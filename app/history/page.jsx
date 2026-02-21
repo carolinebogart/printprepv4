@@ -42,10 +42,38 @@ export default async function HistoryPage() {
     outputsByImage[out.image_id].push(out);
   });
 
+  // Generate signed URLs for originals
+  const signedOriginals = await supabase.storage
+    .from('printprep-images')
+    .createSignedUrls(
+      images.map((img) => img.storage_path),
+      3600
+    );
+  const originalUrlMap = {};
+  (signedOriginals.data || []).forEach((item, i) => {
+    if (item.signedUrl) originalUrlMap[images[i].id] = item.signedUrl;
+  });
+
+  // Generate signed URLs for all outputs
+  const allOutputPaths = (allOutputs || []).map((out) => out.storage_path);
+  let outputUrlMap = {};
+  if (allOutputPaths.length > 0) {
+    const signedOutputs = await supabase.storage
+      .from('printprep-images')
+      .createSignedUrls(allOutputPaths, 3600);
+    (signedOutputs.data || []).forEach((item, i) => {
+      if (item.signedUrl) outputUrlMap[(allOutputs)[i].id] = item.signedUrl;
+    });
+  }
+
   // Merge
   const imagesWithOutputs = images.map((img) => ({
     ...img,
-    outputs: outputsByImage[img.id] || [],
+    previewUrl: originalUrlMap[img.id] || null,
+    outputs: (outputsByImage[img.id] || []).map((out) => ({
+      ...out,
+      previewUrl: outputUrlMap[out.id] || null,
+    })),
   }));
 
   return (

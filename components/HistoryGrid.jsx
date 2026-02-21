@@ -64,7 +64,7 @@ export default function HistoryGrid({ images }) {
       {filtered.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-8">No images match your filters.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filtered.map((img) => (
             <ImageCard
               key={img.id}
@@ -94,6 +94,8 @@ function ImageCard({
   skipConfirm,
   setSkipConfirm,
 }) {
+  const [showOutputs, setShowOutputs] = useState(false);
+
   const statusColors = {
     processed: 'badge-success',
     pending: 'badge-warning',
@@ -110,51 +112,91 @@ function ImageCard({
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden flex flex-col">
-      {/* Header */}
+      {/* Original image preview + info header */}
       <div className="p-3 border-b border-gray-100">
-        <p
-          className="text-sm font-medium text-gray-900 truncate"
-          title={image.original_filename}
-        >
-          {image.original_filename}
-        </p>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-gray-500">
-            {image.width}×{image.height}
-          </span>
-          <span className="text-xs text-gray-400 capitalize">{image.orientation}</span>
-        </div>
-        <div className="flex items-center justify-between mt-1">
-          <span className="text-xs text-gray-400">
-            {new Date(image.created_at).toLocaleDateString()}
-          </span>
-          <span className={`badge text-xs ${statusColors[image.status] || 'badge-warning'}`}>
-            {statusLabel}
-          </span>
+        <div className="flex gap-3">
+          {/* Original thumbnail */}
+          {image.previewUrl ? (
+            <div className="shrink-0 w-20 h-20 bg-gray-50 rounded-md overflow-hidden border border-gray-200 flex items-center justify-center">
+              <img
+                src={image.previewUrl}
+                alt={image.original_filename}
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
+          ) : (
+            <div className="shrink-0 w-20 h-20 bg-gray-100 rounded-md flex items-center justify-center">
+              <span className="text-xs text-gray-400">No preview</span>
+            </div>
+          )}
+
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-sm font-medium text-gray-900 truncate"
+              title={image.original_filename}
+            >
+              {image.original_filename}
+            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-gray-500">
+                {image.width}×{image.height}
+              </span>
+              <span className="text-xs text-gray-400 capitalize">{image.orientation}</span>
+            </div>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs text-gray-400">
+                {new Date(image.created_at).toLocaleDateString()}
+              </span>
+              <span className={`badge text-xs ${statusColors[image.status] || 'badge-warning'}`}>
+                {statusLabel}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Output thumbnails (if any) */}
+      {/* Output image previews (collapsible) */}
       {outputCount > 0 && (
-        <div className="p-2 max-h-[120px] overflow-y-auto">
-          <div className="grid grid-cols-3 gap-1">
-            {image.outputs.slice(0, 9).map((out) => (
-              <div
-                key={out.id}
-                className="bg-gray-100 rounded text-center py-1.5 px-1"
-                title={out.filename}
-              >
-                <span className="text-[10px] text-gray-600 leading-tight block truncate">
-                  {out.size_label || out.ratio_key}
-                </span>
-              </div>
-            ))}
-            {outputCount > 9 && (
-              <div className="bg-gray-50 rounded text-center py-1.5">
-                <span className="text-[10px] text-gray-400">+{outputCount - 9}</span>
-              </div>
-            )}
-          </div>
+        <div className="border-b border-gray-100">
+          <button
+            onClick={() => setShowOutputs(!showOutputs)}
+            className="w-full px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 flex items-center justify-between"
+          >
+            <span>{outputCount} output{outputCount !== 1 ? 's' : ''}</span>
+            <svg
+              className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showOutputs ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showOutputs && (
+            <div className="px-3 pb-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {image.outputs.map((out) => (
+                <div key={out.id} className="group">
+                  <div className="bg-gray-50 rounded-md border border-gray-200 overflow-hidden flex items-center justify-center p-1"
+                       style={{ aspectRatio: 'auto' }}>
+                    {out.previewUrl ? (
+                      <img
+                        src={out.previewUrl}
+                        alt={out.filename}
+                        className="max-w-full max-h-32 object-contain"
+                      />
+                    ) : (
+                      <div className="h-16 flex items-center justify-center">
+                        <span className="text-[10px] text-gray-400">No preview</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-1 text-center truncate" title={out.filename}>
+                    {out.size_label || out.ratio_key}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
