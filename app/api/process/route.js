@@ -1,6 +1,6 @@
 import { createServerClient } from '../../../lib/supabase/server.js';
 import { createServiceClient } from '../../../lib/supabase/service.js';
-import { applyCropAndResize } from '../../../lib/image-processor.js';
+import { extractCrop, resizeToTarget } from '../../../lib/image-processor.js';
 import { generateOutputFilename } from '../../../lib/output-sizes.js';
 import { hasCredits } from '../../../lib/credits.js';
 
@@ -56,19 +56,29 @@ export async function POST(request) {
     const serviceClient = createServiceClient();
     const outputs = [];
 
-    // Process one size at a time: Sharp → upload → release buffer
-    // This keeps memory usage low instead of buffering all outputs at once
+    // Process one size at a time: crop once per ratio → resize → upload → release
     for (const config of cropConfigs) {
       const { ratioKey, cropData, sizes, backgroundColor = '#FFFFFF', useShadow = false } = config;
+
+      // Extract the crop region ONCE from the original (produces a small JPEG buffer)
+      let cropResult;
+      try {
+        cropResult = await extractCrop(originalBuffer, cropData);
+      } catch (error) {
+        // If crop extraction fails, skip all sizes in this ratio
+        for (const size of sizes) {
+          outputs.push({ ratioKey, sizeLabel: size.label, success: false, uploaded: false, error: error.message });
+        }
+        continue;
+      }
 
       for (const size of sizes) {
         let result;
 
-        // Step 1: Process with Sharp
+        // Resize from the pre-cropped buffer (much smaller than original)
         try {
-          const { buffer, format } = await applyCropAndResize(
-            originalBuffer,
-            cropData,
+          const { buffer, format } = await resizeToTarget(
+            cropResult,
             size.width,
             size.height,
             dpi,
