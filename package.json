@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "NODE_OPTIONS='--max-old-space-size=1536' next build",
-    "start": "next start -H 0.0.0.0",
+    "start": "node --expose-gc ./node_modules/.bin/next start -H 0.0.0.0",
     "lint": "next lint"
   },
   "dependencies": {

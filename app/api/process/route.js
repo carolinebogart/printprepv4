@@ -51,26 +51,34 @@ export async function POST(request) {
       return Response.json({ error: 'Failed to retrieve image' }, { status: 500 });
     }
 
-    const originalBuffer = Buffer.from(await fileData.arrayBuffer());
+    let originalBuffer = Buffer.from(await fileData.arrayBuffer());
     const dpi = parseInt(process.env.DEFAULT_DPI || '300', 10);
     const serviceClient = createServiceClient();
     const outputs = [];
 
     // Process one size at a time: crop once per ratio → resize → upload → release
+    // Phase 1: Extract ALL crop regions from the original (sequentially to limit memory)
+    const cropResults = new Map();
     for (const config of cropConfigs) {
-      const { ratioKey, cropData, sizes, backgroundColor = '#FFFFFF', useShadow = false } = config;
-
-      // Extract the crop region ONCE from the original (produces a small JPEG buffer)
-      let cropResult;
+      const { ratioKey, cropData, sizes } = config;
       try {
-        cropResult = await extractCrop(originalBuffer, cropData);
+        cropResults.set(ratioKey, await extractCrop(originalBuffer, cropData));
       } catch (error) {
-        // If crop extraction fails, skip all sizes in this ratio
         for (const size of sizes) {
           outputs.push({ ratioKey, sizeLabel: size.label, success: false, uploaded: false, error: error.message });
         }
-        continue;
       }
+    }
+
+    // Release the original image buffer — all crop regions are extracted
+    originalBuffer = null;
+
+    // Phase 2: Resize each crop → upload → release
+    for (const config of cropConfigs) {
+      const { ratioKey, sizes, backgroundColor = '#FFFFFF', useShadow = false } = config;
+
+      let cropResult = cropResults.get(ratioKey);
+      if (!cropResult) continue; // crop extraction failed above
 
       for (const size of sizes) {
         let result;
@@ -116,8 +124,9 @@ export async function POST(request) {
             upsert: true,
           });
 
-        // Release the buffer reference
+        // Release the buffer reference and nudge GC
         result.buffer = null;
+        if (global.gc) global.gc();
 
         if (uploadError) {
           outputs.push({
@@ -171,6 +180,10 @@ export async function POST(request) {
           uploaded: true,
         });
       }
+
+      // Release the cropped buffer for this ratio
+      cropResult.croppedBuffer = null;
+      cropResult = null;
     }
 
     const successCount = outputs.filter((o) => o.success && o.uploaded).length;
@@ -199,7 +212,10 @@ export async function POST(request) {
       outputs,
     });
   } catch (err) {
-    console.error('Process API error:', err?.message, err?.stack);
+    const mem = process.memoryUsage();
+    console.error('Process API error:', err?.message, err?.stack,
+      `| heap: ${Math.round(mem.heapUsed / 1024 / 1024)}MB / ${Math.round(mem.heapTotal / 1024 / 1024)}MB`,
+      `| rss: ${Math.round(mem.rss / 1024 / 1024)}MB`);
     return Response.json({ error: 'Processing failed. Please try again.' }, { status: 500 });
   }
 }
