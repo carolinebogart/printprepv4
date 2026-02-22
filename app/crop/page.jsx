@@ -44,6 +44,7 @@ export default async function CropPage({ searchParams }) {
       <CropTool
         imageId={image.id}
         imageUrl={signedUrlData.signedUrl}
+        originalFilename={image.original_filename}
         originalWidth={image.width}
         originalHeight={image.height}
         originalRatio={image.aspect_ratio}

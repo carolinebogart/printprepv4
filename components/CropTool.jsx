@@ -8,6 +8,7 @@ import 'cropperjs/dist/cropper.css';
 export default function CropTool({
   imageId,
   imageUrl,
+  originalFilename,
   originalWidth,
   originalHeight,
   originalRatio,
@@ -46,8 +47,7 @@ export default function CropTool({
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
 
-  // Track current crop dimensions in source pixels for DPI calculation
-  const [cropSourceDims, setCropSourceDims] = useState({ width: originalWidth, height: originalHeight });
+  // (DPI badges now use original image dimensions directly)
 
   // Get ordered list of selected ratios
   const selectedRatioKeys = ratios
@@ -220,20 +220,7 @@ export default function CropTool({
     }
   };
 
-  // Update crop source dimensions when crop changes (for DPI calculation)
-  // Cap to actual image dimensions — when zoomed out, crop box may exceed image bounds
-  const updateCropSourceDims = useCallback(() => {
-    const cropper = cropperRef.current?.cropper;
-    if (!cropper) return;
-    const data = cropper.getData();
-    const imgData = cropper.getImageData();
-    if (data.width > 0 && data.height > 0) {
-      setCropSourceDims({
-        width: Math.round(Math.min(data.width, imgData.naturalWidth)),
-        height: Math.round(Math.min(data.height, imgData.naturalHeight)),
-      });
-    }
-  }, []);
+
 
   // Zoom controls — always zoom from center of crop box so image stays centered
   const zoomIn = () => cropperRef.current?.cropper?.zoom(0.1);
@@ -347,29 +334,22 @@ export default function CropTool({
     : 'none';
 
   // Count total selected (non-disabled) sub-sizes across all selected ratios
+  // Use original image dimensions for DPI — represents max quality for each size
   const totalSelectedSizes = selectedRatioKeys.reduce((count, key) =>
     count + cropStates[key].sizes.filter((size) => {
-      const badge = getQualityBadge(cropSourceDims.width, cropSourceDims.height, size.width, size.height);
+      const badge = getQualityBadge(originalWidth, originalHeight, size.width, size.height);
       return size.selected && !badge.disabled;
     }).length, 0);
 
   // Check if any sizes across selected ratios are disabled due to low DPI
-  const hasDisabledSizes = selectedRatioKeys.some((key) =>
-    cropStates[key].sizes.some((size) =>
-      getQualityBadge(cropSourceDims.width, cropSourceDims.height, size.width, size.height).disabled
+  const hasDisabledSizes = ratios.some((r) =>
+    cropStates[r.key].sizes.some((size) =>
+      getQualityBadge(originalWidth, originalHeight, size.width, size.height).disabled
     )
   );
 
   return (
     <div className="flex flex-col h-full">
-      {/* Low resolution banner — fixed at top */}
-      {hasDisabledSizes && (
-        <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-800 flex-shrink-0">
-          <span className="font-semibold">⚠ Some sizes unavailable</span>
-          <span className="ml-2">Image resolution ({cropSourceDims.width}×{cropSourceDims.height}px) is too low for some print sizes. Sizes below 150 DPI are disabled.</span>
-        </div>
-      )}
-
       <div className="flex flex-1 min-h-0">
       {/* Left sidebar — ratio selection */}
       <div className="w-72 bg-white border-r border-gray-200 overflow-y-auto p-4 flex-shrink-0">
@@ -406,7 +386,7 @@ export default function CropTool({
             {
               <div className="ml-6 mt-1 space-y-1">
                 {cropStates[r.key].sizes.map((size, i) => {
-                  const badge = getQualityBadge(cropSourceDims.width, cropSourceDims.height, size.width, size.height);
+                  const badge = getQualityBadge(originalWidth, originalHeight, size.width, size.height);
                   return (
                     <div
                       key={size.label}
@@ -422,16 +402,17 @@ export default function CropTool({
                         toggleSize(r.key, i);
                       }}
                     >
-                      <label className={`flex items-center gap-1.5 text-xs ${badge.disabled ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <span className={`flex items-center gap-1.5 text-xs ${badge.disabled ? 'text-gray-400' : 'text-gray-600'}`}>
                         <input
                           type="checkbox"
                           checked={!!(size.selected && !badge.disabled)}
                           onChange={() => {}}
                           disabled={badge.disabled}
                           className="rounded border-gray-300 pointer-events-none"
+                          tabIndex={-1}
                         />
                         {size.label}&quot;
-                      </label>
+                      </span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${badge.color}`}>
                         {badge.dpi} DPI · {badge.label}
                       </span>
@@ -443,70 +424,65 @@ export default function CropTool({
           </div>
         ))}
 
-        {/* Options for active ratio */}
-        {activeRatio && activeState && (
-          <div className="mt-6 pt-4 border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">Background</h3>
+        {/* Background options — always visible */}
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">Background</h3>
 
-            <div className="flex items-center gap-2 mb-2">
-              <input
-                type="color"
-                value={activeState.backgroundColor === 'transparent' ? '#ffffff' : activeState.backgroundColor}
-                onChange={(e) => setBackgroundColor(activeRatio, e.target.value)}
-                className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
-              />
-              <div
-                className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center cursor-pointer text-xs"
-                style={{
-                  background: activeState.backgroundColor === 'transparent'
-                    ? 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 12px 12px'
-                    : activeState.backgroundColor,
-                }}
-                title="Current color"
-              />
-            </div>
-
-            <div className="flex gap-2 mb-3">
-              <button
-                onClick={() => setEyedropperActive(!eyedropperActive)}
-                className={`text-xs px-2 py-1 rounded border ${
-                  eyedropperActive
-                    ? 'bg-blue-100 border-blue-300 text-blue-700'
-                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                🔍 Eyedropper
-              </button>
-              <button
-                onClick={() => setBackgroundColor(activeRatio, 'transparent')}
-                className={`text-xs px-2 py-1 rounded border ${
-                  activeState.backgroundColor === 'transparent'
-                    ? 'bg-blue-100 border-blue-300 text-blue-700'
-                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                Transparent
-              </button>
-            </div>
-
-            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={activeState.useShadow}
-                onChange={() => toggleShadow(activeRatio)}
-                className="rounded border-gray-300"
-              />
-              Drop shadow
-            </label>
-
-            {/* Sacrifice direction info */}
-            <div className="mt-3 text-xs text-gray-500">
-              {sacrificeDir === 'none' && '✓ Ratios match — no cropping needed'}
-              {sacrificeDir === 'horizontal' && '← → Will sacrifice left/right'}
-              {sacrificeDir === 'vertical' && '↑ ↓ Will sacrifice top/bottom'}
-            </div>
+          <div className="flex items-center gap-2 mb-2">
+            <input
+              type="color"
+              value={(activeState?.backgroundColor ?? '#FFFFFF') === 'transparent' ? '#ffffff' : (activeState?.backgroundColor ?? '#FFFFFF')}
+              onChange={(e) => activeRatio && setBackgroundColor(activeRatio, e.target.value)}
+              className={`w-8 h-8 rounded border border-gray-300 ${activeRatio ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+              disabled={!activeRatio}
+            />
+            <div
+              className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center cursor-pointer text-xs"
+              style={{
+                background: (activeState?.backgroundColor ?? '#FFFFFF') === 'transparent'
+                  ? 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 12px 12px'
+                  : (activeState?.backgroundColor ?? '#FFFFFF'),
+              }}
+              title="Current color"
+            />
           </div>
-        )}
+
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={() => activeRatio && setEyedropperActive(!eyedropperActive)}
+              disabled={!activeRatio}
+              className={`text-xs px-2 py-1 rounded border ${
+                eyedropperActive
+                  ? 'bg-blue-100 border-blue-300 text-blue-700'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              } ${!activeRatio ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              🔍 Eyedropper
+            </button>
+            <button
+              onClick={() => activeRatio && setBackgroundColor(activeRatio, 'transparent')}
+              disabled={!activeRatio}
+              className={`text-xs px-2 py-1 rounded border ${
+                activeState?.backgroundColor === 'transparent'
+                  ? 'bg-blue-100 border-blue-300 text-blue-700'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              } ${!activeRatio ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              Transparent
+            </button>
+          </div>
+
+          <label className={`flex items-center gap-2 text-sm text-gray-700 ${activeRatio ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+            <input
+              type="checkbox"
+              checked={activeState?.useShadow ?? false}
+              onChange={() => activeRatio && toggleShadow(activeRatio)}
+              disabled={!activeRatio}
+              className="rounded border-gray-300"
+            />
+            Drop shadow
+          </label>
+        </div>
 
         {/* Generate button */}
         <div className="mt-6 pt-4 border-t border-gray-200">
@@ -523,41 +499,66 @@ export default function CropTool({
 
       {/* Main crop area */}
       <div className="flex-1 flex flex-col bg-gray-100">
-        {/* Top bar — navigation + zoom */}
-        <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={goPrev}
-              disabled={activeIndexAll <= 0}
-              className="btn-secondary btn-sm"
-            >
-              ← Previous
-            </button>
-            <span className="text-sm text-gray-600">
-              {activeRatioData ? (
-                <>
-                  {activeRatioData.name}
-                  <span className="text-gray-400 ml-1">
-                    ({activeIndexAll + 1}/{allRatioKeys.length})
-                  </span>
-                </>
-              ) : (
-                'Select a ratio to begin'
+        {/* Top bar — image info, navigation, zoom */}
+        <div className="bg-white border-b border-gray-200 px-4 py-2 flex-shrink-0 space-y-1">
+          {/* Row 1: Image info + sacrifice direction + warning */}
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center gap-3">
+              <span className="font-medium text-gray-700 truncate max-w-[200px]" title={originalFilename}>
+                {originalFilename}
+              </span>
+              <span>{originalWidth}×{originalHeight}px</span>
+              {sacrificeDir !== 'none' && (
+                <span className="text-amber-600">
+                  {sacrificeDir === 'horizontal' ? '← → Will sacrifice left/right' : '↑ ↓ Will sacrifice top/bottom'}
+                </span>
               )}
-            </span>
-            <button
-              onClick={goNext}
-              disabled={activeIndexAll >= allRatioKeys.length - 1}
-              className="btn-secondary btn-sm"
-            >
-              Next →
-            </button>
+              {sacrificeDir === 'none' && activeRatioData && (
+                <span className="text-green-600">✓ Ratios match — no cropping needed</span>
+              )}
+            </div>
+            {hasDisabledSizes && (
+              <span className="text-amber-700 font-medium">
+                ⚠ Some sizes below 150 DPI are disabled
+              </span>
+            )}
           </div>
+          {/* Row 2: Navigation + zoom */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={goPrev}
+                disabled={activeIndexAll <= 0}
+                className="btn-secondary btn-sm"
+              >
+                ← Previous
+              </button>
+              <span className="text-sm text-gray-600">
+                {activeRatioData ? (
+                  <>
+                    {activeRatioData.name}
+                    <span className="text-gray-400 ml-1">
+                      ({activeIndexAll + 1}/{allRatioKeys.length})
+                    </span>
+                  </>
+                ) : (
+                  'Select a ratio to begin'
+                )}
+              </span>
+              <button
+                onClick={goNext}
+                disabled={activeIndexAll >= allRatioKeys.length - 1}
+                className="btn-secondary btn-sm"
+              >
+                Next →
+              </button>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <button onClick={zoomOut} className="btn-secondary btn-sm" title="Zoom out">−</button>
-            <button onClick={zoomIn} className="btn-secondary btn-sm" title="Zoom in">+</button>
-            <button onClick={resetCrop} className="btn-secondary btn-sm" title="Reset">Reset</button>
+            <div className="flex items-center gap-2">
+              <button onClick={zoomOut} className="btn-secondary btn-sm" title="Zoom out">−</button>
+              <button onClick={zoomIn} className="btn-secondary btn-sm" title="Zoom in">+</button>
+              <button onClick={resetCrop} className="btn-secondary btn-sm" title="Reset">Reset</button>
+            </div>
           </div>
         </div>
 
@@ -601,8 +602,6 @@ export default function CropTool({
               center={false}
               highlight={false}
               background={true}
-              crop={updateCropSourceDims}
-              ready={updateCropSourceDims}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-400">

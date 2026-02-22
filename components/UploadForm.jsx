@@ -9,9 +9,9 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 // Resolution thresholds for print quality (300 DPI)
 // Short side of image determines what print sizes are possible
 const RES_TIERS = [
-  { minShort: 3600, label: 'Excellent — supports all sizes up to 24×36"', color: 'green' },
-  { minShort: 2400, label: 'Good — supports sizes up to 16×20"', color: 'green' },
-  { minShort: 1800, label: 'Fair — supports sizes up to 8×12"', color: 'yellow' },
+  { minShort: 3600, label: 'High resolution — supports large prints. Check DPI per size on the next page.', color: 'green' },
+  { minShort: 2400, label: 'Good resolution — supports medium prints up to ~16×20" at 150+ DPI', color: 'green' },
+  { minShort: 1800, label: 'Fair — supports sizes up to ~8×12" at 150+ DPI', color: 'yellow' },
   { minShort: 1200, label: 'Limited — only small prints (4×6", 4×5")', color: 'orange' },
   { minShort: 0, label: 'Very low — may not produce print-quality output at any size', color: 'red' },
 ];
