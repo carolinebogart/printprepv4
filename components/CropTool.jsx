@@ -46,6 +46,9 @@ export default function CropTool({
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
 
+  // Track current crop dimensions in source pixels for DPI calculation
+  const [cropSourceDims, setCropSourceDims] = useState({ width: originalWidth, height: originalHeight });
+
   // Get ordered list of selected ratios
   const selectedRatioKeys = ratios
     .filter((r) => selectedRatios[r.key])
@@ -199,6 +202,16 @@ export default function CropTool({
     }
   };
 
+  // Update crop source dimensions when crop changes (for DPI calculation)
+  const updateCropSourceDims = useCallback(() => {
+    const cropper = cropperRef.current?.cropper;
+    if (!cropper) return;
+    const data = cropper.getData();
+    if (data.width > 0 && data.height > 0) {
+      setCropSourceDims({ width: Math.round(data.width), height: Math.round(data.height) });
+    }
+  }, []);
+
   // Zoom controls — always zoom from center of crop box so image stays centered
   const zoomIn = () => cropperRef.current?.cropper?.zoom(0.1);
   const zoomOut = () => cropperRef.current?.cropper?.zoom(-0.1);
@@ -328,17 +341,26 @@ export default function CropTool({
             {/* Size checkboxes when this ratio is active */}
             {selectedRatios[r.key] && activeRatio === r.key && (
               <div className="ml-6 mt-1 space-y-1">
-                {cropStates[r.key].sizes.map((size, i) => (
-                  <label key={size.label} className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={size.selected}
-                      onChange={() => toggleSize(r.key, i)}
-                      className="rounded border-gray-300"
-                    />
-                    {size.label} in ({Math.round(size.width * 300)}×{Math.round(size.height * 300)} px)
-                  </label>
-                ))}
+                {cropStates[r.key].sizes.map((size, i) => {
+                  const badge = getQualityBadge(cropSourceDims.width, cropSourceDims.height, size.width, size.height);
+                  return (
+                    <div key={size.label} className="flex items-center gap-1.5">
+                      <label className={`flex items-center gap-1.5 text-xs cursor-pointer ${badge.disabled ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <input
+                          type="checkbox"
+                          checked={size.selected && !badge.disabled}
+                          onChange={() => !badge.disabled && toggleSize(r.key, i)}
+                          disabled={badge.disabled}
+                          className="rounded border-gray-300"
+                        />
+                        {size.label}&quot;
+                      </label>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${badge.color}`}>
+                        {badge.dpi} DPI · {badge.label}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -502,6 +524,8 @@ export default function CropTool({
               center={false}
               highlight={false}
               background={true}
+              crop={updateCropSourceDims}
+              ready={updateCropSourceDims}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-400">
@@ -518,4 +542,25 @@ function getSacrificeDir(originalRatio, targetRatio) {
   if (Math.abs(originalRatio - targetRatio) < 0.01) return 'none';
   if (targetRatio > originalRatio) return 'horizontal';
   return 'vertical';
+}
+
+/**
+ * Calculate effective DPI and return quality tier.
+ * effectiveDPI = min(cropSourceWidth / targetWidthInches, cropSourceHeight / targetHeightInches)
+ */
+function getQualityBadge(cropSourceWidth, cropSourceHeight, targetWidthInches, targetHeightInches) {
+  const dpiX = cropSourceWidth / targetWidthInches;
+  const dpiY = cropSourceHeight / targetHeightInches;
+  const effectiveDPI = Math.min(dpiX, dpiY);
+
+  if (effectiveDPI >= 300) {
+    return { label: 'Excellent', color: 'text-green-600 bg-green-50 border-green-200', dpi: Math.round(effectiveDPI), disabled: false };
+  }
+  if (effectiveDPI >= 200) {
+    return { label: 'Good', color: 'text-yellow-700 bg-yellow-50 border-yellow-200', dpi: Math.round(effectiveDPI), disabled: false };
+  }
+  if (effectiveDPI >= 150) {
+    return { label: 'Fair', color: 'text-orange-600 bg-orange-50 border-orange-200', dpi: Math.round(effectiveDPI), disabled: false };
+  }
+  return { label: 'Low quality', color: 'text-red-600 bg-red-50 border-red-200', dpi: Math.round(effectiveDPI), disabled: true };
 }
