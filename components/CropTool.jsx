@@ -181,11 +181,14 @@ export default function CropTool({
       return;
     }
 
-    ctx.drawImage(img, 0, 0, imageData.naturalWidth, imageData.naturalHeight);
-    const pixel = ctx.getImageData(Math.floor(imgX), Math.floor(imgY), 1, 1).data;
-    const hex = `#${pixel[0].toString(16).padStart(2, '0')}${pixel[1].toString(16).padStart(2, '0')}${pixel[2].toString(16).padStart(2, '0')}`;
-
-    setBackgroundColor(activeRatio, hex);
+    try {
+      ctx.drawImage(img, 0, 0, imageData.naturalWidth, imageData.naturalHeight);
+      const pixel = ctx.getImageData(Math.floor(imgX), Math.floor(imgY), 1, 1).data;
+      const hex = `#${pixel[0].toString(16).padStart(2, '0')}${pixel[1].toString(16).padStart(2, '0')}${pixel[2].toString(16).padStart(2, '0')}`;
+      setBackgroundColor(activeRatio, hex);
+    } catch (err) {
+      console.warn('Eyedropper: could not sample pixel', err);
+    }
     setEyedropperActive(false);
   }, [activeRatio]);
 
@@ -223,6 +226,7 @@ export default function CropTool({
   const resetCrop = () => cropperRef.current?.cropper?.reset();
 
   // Intercept mouse wheel to zoom from center instead of cursor position
+  const cropperContainerRef = useRef(null);
   const handleCropperWheel = useCallback((e) => {
     e.preventDefault();
     const cropper = cropperRef.current?.cropper;
@@ -230,6 +234,14 @@ export default function CropTool({
     const delta = e.deltaY > 0 ? -0.05 : 0.05;
     cropper.zoom(delta);
   }, []);
+
+  // Attach wheel listener with { passive: false } to allow preventDefault
+  useEffect(() => {
+    const el = cropperContainerRef.current;
+    if (!el) return;
+    el.addEventListener('wheel', handleCropperWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleCropperWheel);
+  }, [handleCropperWheel]);
 
   // Generate all outputs
   const handleGenerate = async () => {
@@ -250,15 +262,19 @@ export default function CropTool({
       // For the active ratio, get it live; for others, use saved state
       let cropData;
       if (ratioKey === activeRatio && cropper) {
-        const cd = cropper.getCropData?.() || cropper.getData();
+        const cd = cropper.getData();
         cropData = { x: cd.x, y: cd.y, width: cd.width, height: cd.height };
       } else if (state.cropBoxData && state.canvasData) {
         // Reconstruct crop coordinates from saved cropper state
+        // canvasData has { left, top, width, height, naturalWidth, naturalHeight }
+        // cropBoxData has { left, top, width, height } in screen pixels
+        const scaleX = state.canvasData.naturalWidth / state.canvasData.width;
+        const scaleY = state.canvasData.naturalHeight / state.canvasData.height;
         cropData = {
-          x: state.cropBoxData.left - state.canvasData.left,
-          y: state.cropBoxData.top - state.canvasData.top,
-          width: state.cropBoxData.width * (state.canvasData.naturalWidth / state.canvasData.width),
-          height: state.cropBoxData.height * (state.canvasData.naturalHeight / state.canvasData.height),
+          x: (state.cropBoxData.left - state.canvasData.left) * scaleX,
+          y: (state.cropBoxData.top - state.canvasData.top) * scaleY,
+          width: state.cropBoxData.width * scaleX,
+          height: state.cropBoxData.height * scaleY,
         };
       } else {
         continue;
@@ -509,8 +525,9 @@ export default function CropTool({
 
         {/* Cropper canvas */}
         <div
-          className={`flex-1 min-h-0 relative overflow-hidden ${eyedropperActive ? 'cursor-crosshair' : ''}`}
-          onWheel={handleCropperWheel}
+          ref={cropperContainerRef}
+          className={`flex-1 min-h-0 relative overflow-hidden ${eyedropperActive ? 'cursor-crosshair' : ''} ${activeState?.backgroundColor === 'transparent' ? 'crop-bg-transparent' : ''}`}
+          style={{ '--crop-bg': activeState?.backgroundColor === 'transparent' ? undefined : (activeState?.backgroundColor || '#FFFFFF') }}
         >
           {eyedropperActive && (
             <>
@@ -529,6 +546,7 @@ export default function CropTool({
             <Cropper
               ref={cropperRef}
               src={imageUrl}
+              crossOrigin="anonymous"
               style={{ height: '100%', width: '100%' }}
               aspectRatio={activeRatioData?.ratio}
               viewMode={0}

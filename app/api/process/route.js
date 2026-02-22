@@ -149,7 +149,7 @@ export async function POST(request) {
       outputs: outputs.map(({ buffer, ...rest }) => rest),
     });
   } catch (err) {
-    console.error('Process API error:', err);
+    console.error('Process API error:', err?.message, err?.stack);
     return Response.json({ error: 'Processing failed. Please try again.' }, { status: 500 });
   }
 }

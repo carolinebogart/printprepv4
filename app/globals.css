@@ -101,6 +101,12 @@ body {
   outline: 3px solid #fff !important;
   outline-offset: -3px;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 0, 0, 0.3);
+  background-color: var(--crop-bg, #ffffff) !important;
+}
+
+/* Checkerboard for transparent background preview */
+.crop-bg-transparent .cropper-view-box {
+  background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 16px 16px !important;
 }
 
 .cropper-modal {
