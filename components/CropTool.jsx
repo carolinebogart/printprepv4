@@ -138,39 +138,53 @@ export default function CropTool({
     }));
   };
 
-  // Eyedropper: pick color from image
+  // Eyedropper: pick color from image via overlay click
   const handleEyedropper = useCallback((e) => {
-    if (!eyedropperActive || !activeRatio) return;
-
     const cropper = cropperRef.current?.cropper;
-    if (!cropper) return;
+    if (!cropper || !activeRatio) return;
 
-    // Get canvas element
-    const canvas = cropper.getCroppedCanvas();
-    if (!canvas) return;
+    // Get the cropper container to calculate relative position
+    const cropperElement = cropperRef.current?.cropper?.element?.parentElement;
+    if (!cropperElement) return;
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const rect = cropperElement.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
 
-    // Create temp canvas to sample pixel
+    // Get canvas and image data positions from cropper
+    const canvasData = cropper.getCanvasData();
+    const imageData = cropper.getImageData();
+
+    // Convert click coords to image pixel coords
+    const imgX = (clickX - canvasData.left) * (imageData.naturalWidth / canvasData.width);
+    const imgY = (clickY - canvasData.top) * (imageData.naturalHeight / canvasData.height);
+
+    // Bounds check — click must be on the actual image
+    if (imgX < 0 || imgY < 0 || imgX >= imageData.naturalWidth || imgY >= imageData.naturalHeight) {
+      setEyedropperActive(false);
+      return;
+    }
+
+    // Draw the full image onto a temp canvas and sample the pixel
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = 1;
-    tempCanvas.height = 1;
+    tempCanvas.width = imageData.naturalWidth;
+    tempCanvas.height = imageData.naturalHeight;
     const ctx = tempCanvas.getContext('2d');
 
-    // Scale coordinates to canvas space
-    const containerData = cropper.getContainerData();
-    const scaleX = canvas.width / containerData.width;
-    const scaleY = canvas.height / containerData.height;
+    // Get the image element from cropper
+    const img = cropperElement.querySelector('img');
+    if (!img) {
+      setEyedropperActive(false);
+      return;
+    }
 
-    ctx.drawImage(canvas, x * scaleX, y * scaleY, 1, 1, 0, 0, 1, 1);
-    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-    const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    ctx.drawImage(img, 0, 0, imageData.naturalWidth, imageData.naturalHeight);
+    const pixel = ctx.getImageData(Math.floor(imgX), Math.floor(imgY), 1, 1).data;
+    const hex = `#${pixel[0].toString(16).padStart(2, '0')}${pixel[1].toString(16).padStart(2, '0')}${pixel[2].toString(16).padStart(2, '0')}`;
 
     setBackgroundColor(activeRatio, hex);
     setEyedropperActive(false);
-  }, [eyedropperActive, activeRatio]);
+  }, [activeRatio]);
 
   // Navigation between ratios
   const goNext = () => {
@@ -453,13 +467,19 @@ export default function CropTool({
         {/* Cropper canvas */}
         <div
           className={`flex-1 relative ${eyedropperActive ? 'cursor-crosshair' : ''}`}
-          onClick={eyedropperActive ? handleEyedropper : undefined}
           onWheel={handleCropperWheel}
         >
           {eyedropperActive && (
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-blue-600 text-white text-xs px-3 py-1 rounded-full">
-              Click on the image to pick a color
-            </div>
+            <>
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-blue-600 text-white text-xs px-3 py-1 rounded-full pointer-events-none">
+                Click on the image to pick a color
+              </div>
+              {/* Transparent overlay to capture clicks above cropperjs */}
+              <div
+                className="absolute inset-0 z-10 cursor-crosshair"
+                onClick={handleEyedropper}
+              />
+            </>
           )}
 
           {activeRatio ? (
