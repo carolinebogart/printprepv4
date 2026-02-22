@@ -36,7 +36,7 @@ export default async function CropPage({ searchParams }) {
     key,
     name: val.name,
     ratio: val.ratio,
-    sizes: val.sizes.map((s) => ({ ...s, selected: true })),
+    sizes: val.sizes.map((s, i, arr) => ({ ...s, selected: i === arr.length - 1 })),
   }));
 
   return (
