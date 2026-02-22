@@ -97,8 +97,14 @@ export default function CropTool({
     const state = cropStates[activeRatio];
     if (state.canvasData) {
       setTimeout(() => {
-        cropper.setCanvasData(state.canvasData);
-        if (state.cropBoxData) cropper.setCropBoxData(state.cropBoxData);
+        const c = cropperRef.current?.cropper;
+        if (!c) return;
+        try {
+          c.setCanvasData(state.canvasData);
+          if (state.cropBoxData) c.setCropBoxData(state.cropBoxData);
+        } catch (err) {
+          // Cropper not ready yet — ignore
+        }
       }, 50);
     }
   }, [activeRatio]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -357,30 +363,36 @@ export default function CropTool({
 
         {ratios.map((r) => (
           <div key={r.key} className="mb-3">
-            <label className="flex items-center gap-2 cursor-pointer">
+            <div
+              className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1"
+              onClick={() => {
+                if (selectedRatios[r.key] && activeRatio === r.key) {
+                  // Already active — toggle off
+                  toggleRatio(r.key);
+                } else if (selectedRatios[r.key]) {
+                  // Selected but not active — switch focus
+                  switchToRatio(r.key);
+                } else {
+                  // Not selected — toggle on
+                  toggleRatio(r.key);
+                }
+              }}
+            >
               <input
                 type="checkbox"
                 checked={selectedRatios[r.key]}
-                onChange={() => toggleRatio(r.key)}
-                className="rounded border-gray-300"
+                onChange={() => {}}
+                className="rounded border-gray-300 pointer-events-none"
+                tabIndex={-1}
               />
               <span
                 className={`text-sm font-medium ${
                   activeRatio === r.key ? 'text-blue-600' : 'text-gray-700'
                 }`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  // Always switch focus — auto-select ratio if needed
-                  if (!selectedRatios[r.key]) {
-                    toggleRatio(r.key);
-                  } else {
-                    switchToRatio(r.key);
-                  }
-                }}
               >
                 {r.name}
               </span>
-            </label>
+            </div>
 
             {/* Size checkboxes — always visible so user sees all options */}
             {
