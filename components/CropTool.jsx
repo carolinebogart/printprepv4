@@ -185,10 +185,19 @@ export default function CropTool({
     }
   };
 
-  // Zoom controls
+  // Zoom controls — always zoom from center of crop box so image stays centered
   const zoomIn = () => cropperRef.current?.cropper?.zoom(0.1);
   const zoomOut = () => cropperRef.current?.cropper?.zoom(-0.1);
   const resetCrop = () => cropperRef.current?.cropper?.reset();
+
+  // Intercept mouse wheel to zoom from center instead of cursor position
+  const handleCropperWheel = useCallback((e) => {
+    e.preventDefault();
+    const cropper = cropperRef.current?.cropper;
+    if (!cropper) return;
+    const delta = e.deltaY > 0 ? -0.05 : 0.05;
+    cropper.zoom(delta);
+  }, []);
 
   // Generate all outputs
   const handleGenerate = async () => {
@@ -445,6 +454,7 @@ export default function CropTool({
         <div
           className={`flex-1 relative ${eyedropperActive ? 'cursor-crosshair' : ''}`}
           onClick={eyedropperActive ? handleEyedropper : undefined}
+          onWheel={handleCropperWheel}
         >
           {eyedropperActive && (
             <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-blue-600 text-white text-xs px-3 py-1 rounded-full">
@@ -463,7 +473,7 @@ export default function CropTool({
               cropBoxMovable={false}
               cropBoxResizable={false}
               zoomable={true}
-              zoomOnWheel={true}
+              zoomOnWheel={false}
               zoomOnTouch={true}
               autoCropArea={1}
               responsive={true}
