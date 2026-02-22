@@ -40,7 +40,7 @@ export default async function CropPage({ searchParams }) {
   }));
 
   return (
-    <div className="h-[calc(100vh-4rem)]">
+    <div className="h-[calc(100vh-8rem)] my-4">
       <CropTool
         imageId={image.id}
         imageUrl={signedUrlData.signedUrl}

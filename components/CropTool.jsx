@@ -203,12 +203,17 @@ export default function CropTool({
   };
 
   // Update crop source dimensions when crop changes (for DPI calculation)
+  // Cap to actual image dimensions — when zoomed out, crop box may exceed image bounds
   const updateCropSourceDims = useCallback(() => {
     const cropper = cropperRef.current?.cropper;
     if (!cropper) return;
     const data = cropper.getData();
+    const imgData = cropper.getImageData();
     if (data.width > 0 && data.height > 0) {
-      setCropSourceDims({ width: Math.round(data.width), height: Math.round(data.height) });
+      setCropSourceDims({
+        width: Math.round(Math.min(data.width, imgData.naturalWidth)),
+        height: Math.round(Math.min(data.height, imgData.naturalHeight)),
+      });
     }
   }, []);
 
@@ -338,8 +343,8 @@ export default function CropTool({
               </span>
             </label>
 
-            {/* Size checkboxes when this ratio is active */}
-            {selectedRatios[r.key] && activeRatio === r.key && (
+            {/* Size checkboxes — show for any selected ratio */}
+            {selectedRatios[r.key] && (
               <div className="ml-6 mt-1 space-y-1">
                 {cropStates[r.key].sizes.map((size, i) => {
                   const badge = getQualityBadge(cropSourceDims.width, cropSourceDims.height, size.width, size.height);
@@ -510,7 +515,7 @@ export default function CropTool({
               src={imageUrl}
               style={{ height: '100%', width: '100%' }}
               aspectRatio={activeRatioData?.ratio}
-              viewMode={1}
+              viewMode={0}
               dragMode="move"
               cropBoxMovable={false}
               cropBoxResizable={false}
