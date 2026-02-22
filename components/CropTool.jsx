@@ -99,16 +99,16 @@ export default function CropTool({
     }
   }, [activeRatio]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Toggle ratio selection
+  // Toggle ratio selection — always switch focus to the toggled-on ratio
   const toggleRatio = (key) => {
     setSelectedRatios((prev) => {
       const next = { ...prev, [key]: !prev[key] };
-      // If turning on and no active ratio, make this active
-      if (next[key] && !activeRatio) {
+      if (next[key]) {
+        // Turning on — always switch focus to this ratio
+        saveCropState();
         setActiveRatio(key);
-      }
-      // If turning off the active ratio, switch to next selected
-      if (!next[key] && activeRatio === key) {
+      } else if (activeRatio === key) {
+        // Turning off the active ratio — switch to next selected
         const remaining = ratios.filter((r) => next[r.key]).map((r) => r.key);
         setActiveRatio(remaining[0] || null);
       }
@@ -331,6 +331,13 @@ export default function CropTool({
     ? getSacrificeDir(originalRatio, activeRatioData.ratio)
     : 'none';
 
+  // Count total selected (non-disabled) sub-sizes across all selected ratios
+  const totalSelectedSizes = selectedRatioKeys.reduce((count, key) =>
+    count + cropStates[key].sizes.filter((size) => {
+      const badge = getQualityBadge(cropSourceDims.width, cropSourceDims.height, size.width, size.height);
+      return size.selected && !badge.disabled;
+    }).length, 0);
+
   // Check if any sizes across selected ratios are disabled due to low DPI
   const hasDisabledSizes = selectedRatioKeys.some((key) =>
     cropStates[key].sizes.some((size) =>
@@ -375,18 +382,28 @@ export default function CropTool({
               </span>
             </label>
 
-            {/* Size checkboxes — show for any selected ratio */}
-            {selectedRatios[r.key] && (
-              <div className="ml-6 mt-1 space-y-1">
+            {/* Size checkboxes — always visible so user sees all options */}
+            {
+              <div className={`ml-6 mt-1 space-y-1 ${selectedRatios[r.key] ? '' : 'opacity-50'}`}>
                 {cropStates[r.key].sizes.map((size, i) => {
                   const badge = getQualityBadge(cropSourceDims.width, cropSourceDims.height, size.width, size.height);
                   return (
                     <div key={size.label} className="flex items-center gap-1.5">
-                      <label className={`flex items-center gap-1.5 text-xs cursor-pointer ${badge.disabled ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <label className={`flex items-center gap-1.5 text-xs cursor-pointer ${badge.disabled || !selectedRatios[r.key] ? 'text-gray-400' : 'text-gray-600'}`}>
                         <input
                           type="checkbox"
-                          checked={size.selected && !badge.disabled}
-                          onChange={() => !badge.disabled && toggleSize(r.key, i)}
+                          checked={!!(size.selected && !badge.disabled && selectedRatios[r.key])}
+                          onChange={() => {
+                            if (badge.disabled) return;
+                            // If ratio isn't selected yet, turn it on and switch focus
+                            if (!selectedRatios[r.key]) {
+                              toggleRatio(r.key);
+                            } else if (activeRatio !== r.key) {
+                              // Ratio is selected but not focused — switch focus
+                              switchToRatio(r.key);
+                            }
+                            toggleSize(r.key, i);
+                          }}
                           disabled={badge.disabled}
                           className="rounded border-gray-300"
                         />
@@ -399,7 +416,7 @@ export default function CropTool({
                   );
                 })}
               </div>
-            )}
+            }
           </div>
         ))}
 
@@ -473,10 +490,10 @@ export default function CropTool({
           {error && <div className="flash-error text-xs mb-2">{error}</div>}
           <button
             onClick={handleGenerate}
-            disabled={selectedRatioKeys.length === 0 || processing}
+            disabled={totalSelectedSizes === 0 || processing}
             className="btn-primary w-full py-2.5"
           >
-            {processing ? 'Processing...' : 'Generate All Sizes'}
+            {processing ? 'Processing...' : totalSelectedSizes === 0 ? 'Select sizes to generate' : `Generate ${totalSelectedSizes} size${totalSelectedSizes !== 1 ? 's' : ''}`}
           </button>
         </div>
       </div>
