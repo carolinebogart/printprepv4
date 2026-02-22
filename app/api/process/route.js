@@ -1,6 +1,7 @@
 import { createServerClient } from '../../../lib/supabase/server.js';
 import { createServiceClient } from '../../../lib/supabase/service.js';
-import { processAllCrops } from '../../../lib/image-processor.js';
+import { applyCropAndResize } from '../../../lib/image-processor.js';
+import { generateOutputFilename } from '../../../lib/output-sizes.js';
 import { hasCredits } from '../../../lib/credits.js';
 
 export async function POST(request) {
@@ -51,76 +52,115 @@ export async function POST(request) {
     }
 
     const originalBuffer = Buffer.from(await fileData.arrayBuffer());
-
-    // Process all crops
     const dpi = parseInt(process.env.DEFAULT_DPI || '300', 10);
-    const results = await processAllCrops(originalBuffer, cropConfigs, dpi);
-
-    // Upload outputs to storage and create DB records
     const serviceClient = createServiceClient();
     const outputs = [];
 
-    for (const result of results) {
-      if (!result.success) {
-        outputs.push({ ...result, uploaded: false });
-        continue;
-      }
+    // Process one size at a time: Sharp → upload → release buffer
+    // This keeps memory usage low instead of buffering all outputs at once
+    for (const config of cropConfigs) {
+      const { ratioKey, cropData, sizes, backgroundColor = '#FFFFFF', useShadow = false } = config;
 
-      const storagePath = `${user.id}/outputs/${imageId}/${result.filename}`;
+      for (const size of sizes) {
+        let result;
 
-      // Upload to storage
-      const { error: uploadError } = await serviceClient.storage
-        .from('printprep-images')
-        .upload(storagePath, result.buffer, {
-          contentType: result.format === 'png' ? 'image/png' : 'image/jpeg',
-          upsert: true,
-        });
+        // Step 1: Process with Sharp
+        try {
+          const { buffer, format } = await applyCropAndResize(
+            originalBuffer,
+            cropData,
+            size.width,
+            size.height,
+            dpi,
+            backgroundColor,
+            useShadow
+          );
 
-      if (uploadError) {
+          const filename = generateOutputFilename(
+            ratioKey,
+            size.width,
+            size.height,
+            dpi,
+            format
+          );
+
+          result = { ratioKey, sizeLabel: size.label, filename, buffer, format, success: true };
+        } catch (error) {
+          outputs.push({
+            ratioKey,
+            sizeLabel: size.label,
+            success: false,
+            uploaded: false,
+            error: error.message,
+          });
+          continue;
+        }
+
+        // Step 2: Upload immediately (then buffer can be GC'd)
+        const storagePath = `${user.id}/outputs/${imageId}/${result.filename}`;
+
+        const { error: uploadError } = await serviceClient.storage
+          .from('printprep-images')
+          .upload(storagePath, result.buffer, {
+            contentType: result.format === 'png' ? 'image/png' : 'image/jpeg',
+            upsert: true,
+          });
+
+        // Release the buffer reference
+        result.buffer = null;
+
+        if (uploadError) {
+          outputs.push({
+            ratioKey: result.ratioKey,
+            sizeLabel: result.sizeLabel,
+            filename: result.filename,
+            format: result.format,
+            success: true,
+            uploaded: false,
+            error: 'Storage upload failed',
+          });
+          continue;
+        }
+
+        // Step 3: Create DB record
+        const { data: outputRecord, error: dbError } = await serviceClient
+          .from('processed_outputs')
+          .insert({
+            image_id: imageId,
+            user_id: user.id,
+            ratio_key: result.ratioKey,
+            size_label: result.sizeLabel,
+            filename: result.filename,
+            storage_path: storagePath,
+            format: result.format,
+            status: 'completed',
+          })
+          .select()
+          .single();
+
+        if (dbError) {
+          outputs.push({
+            filename: result.filename,
+            ratioKey: result.ratioKey,
+            sizeLabel: result.sizeLabel,
+            format: result.format,
+            success: true,
+            uploaded: true,
+            dbError: dbError.message,
+          });
+          continue;
+        }
+
         outputs.push({
-          ...result,
-          buffer: undefined,
-          uploaded: false,
-          error: 'Storage upload failed',
-        });
-        continue;
-      }
-
-      // Create processed_outputs record
-      const { data: outputRecord, error: dbError } = await serviceClient
-        .from('processed_outputs')
-        .insert({
-          image_id: imageId,
-          user_id: user.id,
-          ratio_key: result.ratioKey,
-          size_label: result.sizeLabel,
+          id: outputRecord.id,
           filename: result.filename,
-          storage_path: storagePath,
+          ratioKey: result.ratioKey,
+          sizeLabel: result.sizeLabel,
           format: result.format,
-          status: 'completed',
-        })
-        .select()
-        .single();
-
-      if (dbError) {
-        outputs.push({
-          ...result,
-          buffer: undefined,
+          success: true,
           uploaded: true,
-          dbError: dbError.message,
         });
-        continue;
       }
-
-      outputs.push({
-        id: outputRecord.id,
-        filename: result.filename,
-        ratioKey: result.ratioKey,
-        sizeLabel: result.sizeLabel,
-        format: result.format,
-        success: true,
-        uploaded: true,
-      });
     }
 
     const successCount = outputs.filter((o) => o.success && o.uploaded).length;
@@ -146,7 +186,7 @@ export async function POST(request) {
       imageId,
       totalOutputs: outputs.length,
       successfulOutputs: successCount,
-      outputs: outputs.map(({ buffer, ...rest }) => rest),
+      outputs,
     });
   } catch (err) {
     console.error('Process API error:', err?.message, err?.stack);
