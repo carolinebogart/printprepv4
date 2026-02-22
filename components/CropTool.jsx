@@ -466,7 +466,7 @@ export default function CropTool({
 
         {/* Cropper canvas */}
         <div
-          className={`flex-1 relative ${eyedropperActive ? 'cursor-crosshair' : ''}`}
+          className={`flex-1 min-h-0 relative overflow-hidden ${eyedropperActive ? 'cursor-crosshair' : ''}`}
           onWheel={handleCropperWheel}
         >
           {eyedropperActive && (
@@ -488,14 +488,14 @@ export default function CropTool({
               src={imageUrl}
               style={{ height: '100%', width: '100%' }}
               aspectRatio={activeRatioData?.ratio}
-              viewMode={0}
+              viewMode={1}
               dragMode="move"
               cropBoxMovable={false}
               cropBoxResizable={false}
               zoomable={true}
               zoomOnWheel={false}
               zoomOnTouch={true}
-              autoCropArea={1}
+              autoCropArea={0.85}
               responsive={true}
               restore={false}
               guides={false}
