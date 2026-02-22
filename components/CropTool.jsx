@@ -315,11 +315,27 @@ export default function CropTool({
     ? getSacrificeDir(originalRatio, activeRatioData.ratio)
     : 'none';
 
+  // Check if any sizes across selected ratios are disabled due to low DPI
+  const hasDisabledSizes = selectedRatioKeys.some((key) =>
+    cropStates[key].sizes.some((size) =>
+      getQualityBadge(cropSourceDims.width, cropSourceDims.height, size.width, size.height).disabled
+    )
+  );
+
   return (
     <div className="flex h-full">
       {/* Left sidebar — ratio selection */}
       <div className="w-72 bg-white border-r border-gray-200 overflow-y-auto p-4 flex-shrink-0">
         <h2 className="font-semibold text-gray-900 mb-3">Select Ratios</h2>
+
+        {/* Low resolution banner */}
+        {hasDisabledSizes && (
+          <div className="mb-3 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+            <p className="font-semibold mb-1">⚠ Some sizes unavailable</p>
+            <p>Your image resolution ({cropSourceDims.width}×{cropSourceDims.height}px) is too low for some print sizes. Sizes below 150 DPI are disabled to protect print quality.</p>
+            <p className="mt-1 opacity-80">Tip: 300 DPI is the standard for print. An 8×10&quot; print needs at least 2400×3000px.</p>
+          </div>
+        )}
 
         {ratios.map((r) => (
           <div key={r.key} className="mb-3">
