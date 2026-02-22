@@ -9,6 +9,7 @@ export const maxDuration = 60; // seconds
 
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'tiff', 'webp', 'bmp'];
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_PIXELS = 65_000_000; // ~8062×8062 — any legitimate print source fits within this
 
 export async function POST(request) {
   try {
@@ -74,6 +75,16 @@ export async function POST(request) {
 
     // Extract metadata
     const metadata = await getImageInfo(buffer);
+
+    // Validate pixel dimensions
+    const totalPixels = metadata.width * metadata.height;
+    if (totalPixels > MAX_PIXELS) {
+      const maxDim = Math.round(Math.sqrt(MAX_PIXELS));
+      return NextResponse.json(
+        { error: `Image is too large (${metadata.width}×${metadata.height} = ${Math.round(totalPixels / 1e6)}MP). Maximum is ~${maxDim}×${maxDim} pixels (65MP). Please resize your image before uploading.` },
+        { status: 400 }
+      );
+    }
 
     // Generate unique filename and upload
     const imageId = crypto.randomUUID();
