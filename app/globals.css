@@ -95,3 +95,24 @@ body {
 .btn-sm {
   @apply text-sm px-3 py-1.5;
 }
+
+/* Cropperjs overrides — make crop target more visible */
+.cropper-view-box {
+  outline: 3px solid #fff !important;
+  outline-offset: -3px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 0, 0, 0.3);
+}
+
+.cropper-modal {
+  background-color: #000 !important;
+  opacity: 0.6 !important;
+}
+
+.cropper-line,
+.cropper-point {
+  display: none !important;
+}
+
+.cropper-dashed {
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
