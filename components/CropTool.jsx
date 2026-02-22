@@ -228,9 +228,24 @@ export default function CropTool({
 
 
 
+  // Re-pin crop box to fixed size after any zoom so it never shrinks
+  const rePinCropBox = useCallback(() => {
+    const cropper = cropperRef.current?.cropper;
+    if (!cropper) return;
+    const containerData = cropper.getContainerData();
+    const cropBoxData = cropper.getCropBoxData();
+    // Re-set to the same width/height, re-center
+    cropper.setCropBoxData({
+      left: (containerData.width - cropBoxData.width) / 2,
+      top: (containerData.height - cropBoxData.height) / 2,
+      width: cropBoxData.width,
+      height: cropBoxData.height,
+    });
+  }, []);
+
   // Zoom controls — always zoom from center of crop box so image stays centered
-  const zoomIn = () => cropperRef.current?.cropper?.zoom(0.1);
-  const zoomOut = () => cropperRef.current?.cropper?.zoom(-0.1);
+  const zoomIn = () => { cropperRef.current?.cropper?.zoom(0.1); rePinCropBox(); };
+  const zoomOut = () => { cropperRef.current?.cropper?.zoom(-0.1); rePinCropBox(); };
   const resetCrop = () => cropperRef.current?.cropper?.reset();
 
   // Intercept mouse wheel to zoom from center instead of cursor position
@@ -241,7 +256,8 @@ export default function CropTool({
     if (!cropper) return;
     const delta = e.deltaY > 0 ? -0.05 : 0.05;
     cropper.zoom(delta);
-  }, []);
+    rePinCropBox();
+  }, [rePinCropBox]);
 
   // Attach wheel listener with { passive: false } to allow preventDefault
   useEffect(() => {
@@ -514,21 +530,19 @@ export default function CropTool({
         {/* Top bar — image info, navigation, zoom */}
         <div className="bg-white border-b border-gray-200 px-4 py-2 flex-shrink-0 space-y-1">
           {/* Row 1: Image info + sacrifice direction + warning */}
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <div className="flex items-center gap-3">
-              <span className="font-medium text-gray-700 truncate max-w-[200px]" title={originalFilename}>
-                {originalFilename}
+          <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
+            <span className="font-medium text-gray-700 truncate max-w-[200px]" title={originalFilename}>
+              {originalFilename}
+            </span>
+            <span>{originalWidth}×{originalHeight}px</span>
+            {sacrificeDir !== 'none' && (
+              <span className="text-amber-600">
+                {sacrificeDir === 'horizontal' ? '← → Will sacrifice left/right' : '↑ ↓ Will sacrifice top/bottom'}
               </span>
-              <span>{originalWidth}×{originalHeight}px</span>
-              {sacrificeDir !== 'none' && (
-                <span className="text-amber-600">
-                  {sacrificeDir === 'horizontal' ? '← → Will sacrifice left/right' : '↑ ↓ Will sacrifice top/bottom'}
-                </span>
-              )}
-              {sacrificeDir === 'none' && activeRatioData && (
-                <span className="text-green-600">✓ Ratios match — no cropping needed</span>
-              )}
-            </div>
+            )}
+            {sacrificeDir === 'none' && activeRatioData && (
+              <span className="text-green-600">✓ Ratios match — no cropping needed</span>
+            )}
             {hasDisabledSizes && (
               <span className="text-amber-700 font-medium">
                 ⚠ Some sizes below 150 DPI are disabled
@@ -614,6 +628,41 @@ export default function CropTool({
               center={false}
               highlight={false}
               background={true}
+              ready={() => {
+                // Lock crop box to fill the container so it never shrinks
+                const cropper = cropperRef.current?.cropper;
+                if (!cropper) return;
+                const containerData = cropper.getContainerData();
+                const ratio = activeRatioData?.ratio || 1;
+                let boxW, boxH;
+                if (ratio >= 1) {
+                  // Landscape or square — fit by height
+                  boxH = containerData.height * 0.85;
+                  boxW = boxH * ratio;
+                  if (boxW > containerData.width * 0.85) {
+                    boxW = containerData.width * 0.85;
+                    boxH = boxW / ratio;
+                  }
+                } else {
+                  // Portrait — fit by width
+                  boxW = containerData.width * 0.85;
+                  boxH = boxW / ratio;
+                  if (boxH > containerData.height * 0.85) {
+                    boxH = containerData.height * 0.85;
+                    boxW = boxH * ratio;
+                  }
+                }
+                cropper.setCropBoxData({
+                  left: (containerData.width - boxW) / 2,
+                  top: (containerData.height - boxH) / 2,
+                  width: boxW,
+                  height: boxH,
+                });
+              }}
+              zoom={() => {
+                // After any zoom (including pinch), re-pin crop box
+                requestAnimationFrame(rePinCropBox);
+              }}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-400">
