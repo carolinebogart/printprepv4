@@ -1,4 +1,3 @@
-import { createServerClient } from '../../../lib/supabase/server.js';
 import { createServiceClient } from '../../../lib/supabase/service.js';
 import { requireAdmin } from '../../../lib/admin.js';
 import AdminImageList from '../../../components/AdminImageList.jsx';
@@ -6,8 +5,7 @@ import AdminImageList from '../../../components/AdminImageList.jsx';
 export const metadata = { title: 'Admin – Images | PrintPrep' };
 
 export default async function AdminImagesPage({ searchParams }) {
-  const supabase = await createServerClient();
-  await requireAdmin(supabase, 'read_only');
+  const { supabase } = await requireAdmin('read_only');
 
   const params = await searchParams;
   const search = params?.search || '';
@@ -94,7 +92,7 @@ export default async function AdminImagesPage({ searchParams }) {
   }
 
   return (
-    <div>
+    <div className="max-w-6xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Image Management</h1>
 
       {/* Filters */}

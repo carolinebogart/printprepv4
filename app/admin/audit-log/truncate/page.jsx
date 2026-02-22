@@ -36,7 +36,7 @@ export default function TruncateAuditLogPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          before_date: new Date(beforeDate).toISOString(),
+          before_date: beforeDate + 'T23:59:59.999Z',
           admin_note: note.trim(),
         }),
       });
@@ -54,6 +54,7 @@ export default function TruncateAuditLogPage() {
   }
 
   return (
+    <div className="max-w-6xl mx-auto px-4 py-8">
     <div className="max-w-lg">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">Truncate Audit Log</h1>
       <p className="text-sm text-gray-500 mb-6">
@@ -112,6 +113,7 @@ export default function TruncateAuditLogPage() {
           </button>
         </form>
       )}
+    </div>
     </div>
   );
 }
