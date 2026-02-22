@@ -8,7 +8,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ message: result.error.message }, { status: result.error.status });
   }
 
-  const { user, supabase } = result;
+  const { admin, supabase } = result;
   const body = await request.json();
   const { type, content, is_pinned } = body;
 
@@ -23,7 +23,7 @@ export async function POST(request, { params }) {
     .from('user_notes')
     .insert({
       user_id: targetUserId,
-      admin_user_id: user.id,
+      admin_user_id: admin.id,
       note_type: noteType,
       content: content.trim(),
       is_pinned: !!is_pinned,
@@ -34,7 +34,7 @@ export async function POST(request, { params }) {
   }
 
   await logAdminAction(supabase, {
-    adminUserId: user.id,
+    adminUserId: admin.id,
     actionType: 'note_added',
     targetUserId,
     changes: { note_type: noteType, content: content.trim(), is_pinned: !!is_pinned },

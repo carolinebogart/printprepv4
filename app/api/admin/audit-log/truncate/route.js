@@ -1,12 +1,10 @@
-import { createServerClient } from '../../../../../lib/supabase/server.js';
 import { createServiceClient } from '../../../../../lib/supabase/service.js';
 import { requireAdminApi, logAdminAction } from '../../../../../lib/admin.js';
 
 export async function POST(request) {
-  const supabase = await createServerClient();
-  const adminCheck = await requireAdminApi(supabase, 'super_admin');
+  const adminCheck = await requireAdminApi('super_admin');
   if (adminCheck.error) {
-    return Response.json({ error: adminCheck.error }, { status: adminCheck.status });
+    return Response.json({ error: adminCheck.error.message }, { status: adminCheck.error.status });
   }
 
   const { before_date, admin_note } = await request.json();
@@ -43,12 +41,11 @@ export async function POST(request) {
 
   // Log the truncation itself
   await logAdminAction(service, {
-    admin_user_id: adminCheck.user.id,
-    action_type: 'audit_log_truncate',
-    admin_note: admin_note.trim(),
+    adminUserId: adminCheck.admin.id,
+    actionType: 'audit_log_truncate',
+    adminNote: admin_note.trim(),
     changes: { before_date, entries_deleted: count },
-    ip_address: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
-    user_agent: request.headers.get('user-agent'),
+    request,
   });
 
   return Response.json({ success: true, deleted: count });

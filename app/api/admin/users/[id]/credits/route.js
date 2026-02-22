@@ -8,7 +8,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ message: result.error.message }, { status: result.error.status });
   }
 
-  const { user, supabase } = result;
+  const { admin, supabase } = result;
   const body = await request.json();
   const { new_credits, admin_note } = body;
 
@@ -44,7 +44,7 @@ export async function POST(request, { params }) {
   }
 
   await logAdminAction(supabase, {
-    adminUserId: user.id,
+    adminUserId: admin.id,
     actionType: 'credit_adjustment',
     targetUserId,
     changes: { old_credits: oldCredits, new_credits },

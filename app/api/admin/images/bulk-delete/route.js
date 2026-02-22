@@ -1,12 +1,10 @@
-import { createServerClient } from '../../../../../lib/supabase/server.js';
 import { createServiceClient } from '../../../../../lib/supabase/service.js';
 import { requireAdminApi, logAdminAction } from '../../../../../lib/admin.js';
 
 export async function POST(request) {
-  const supabase = await createServerClient();
-  const adminCheck = await requireAdminApi(supabase, 'support_admin');
+  const adminCheck = await requireAdminApi('support_admin');
   if (adminCheck.error) {
-    return Response.json({ error: adminCheck.error }, { status: adminCheck.status });
+    return Response.json({ error: adminCheck.error.message }, { status: adminCheck.error.status });
   }
 
   const { image_ids } = await request.json();
@@ -65,17 +63,16 @@ export async function POST(request) {
   // Audit log
   const affectedUsers = [...new Set(images.map((img) => img.user_id))];
   await logAdminAction(service, {
-    admin_user_id: adminCheck.user.id,
-    action_type: 'image_bulk_delete',
-    admin_note: `Bulk deleted ${images.length} images`,
+    adminUserId: adminCheck.admin.id,
+    actionType: 'image_bulk_delete',
+    adminNote: `Bulk deleted ${images.length} images`,
     changes: {
       image_count: images.length,
       output_count: outputs?.length || 0,
       affected_users: affectedUsers,
       filenames: images.map((img) => img.original_filename),
     },
-    ip_address: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
-    user_agent: request.headers.get('user-agent'),
+    request,
   });
 
   return Response.json({ success: true, deleted: images.length });

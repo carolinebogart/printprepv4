@@ -9,7 +9,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ message: result.error.message }, { status: result.error.status });
   }
 
-  const { user, admin, supabase } = result;
+  const { admin, supabase } = result;
   const body = await request.json();
   const { email, full_name, admin_note } = body;
 
@@ -42,7 +42,7 @@ export async function POST(request, { params }) {
   }
 
   await logAdminAction(supabase, {
-    adminUserId: user.id,
+    adminUserId: admin.id,
     actionType: 'profile_update',
     targetUserId,
     changes: {
