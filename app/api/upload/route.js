@@ -4,6 +4,8 @@ import { getRatiosForOrientation } from '@/lib/output-sizes';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const maxDuration = 60; // seconds
 
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'tiff', 'webp', 'bmp'];
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -38,8 +40,17 @@ export async function POST(request) {
       );
     }
 
-    // Parse form data
-    const formData = await request.formData();
+    // Parse form data — can fail on very large files
+    let formData;
+    try {
+      formData = await request.formData();
+    } catch (parseErr) {
+      console.error('FormData parse error:', parseErr?.message);
+      return NextResponse.json(
+        { error: 'File too large to upload. Please try a smaller file (under 25MB) or compress it first.' },
+        { status: 413 }
+      );
+    }
     const file = formData.get('file');
 
     if (!file || !file.name) {

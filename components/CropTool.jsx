@@ -56,6 +56,10 @@ export default function CropTool({
 
   const currentIndex = selectedRatioKeys.indexOf(activeRatio);
 
+  // Index of active ratio in the full list (for prev/next cycling through all)
+  const allRatioKeys = ratios.map((r) => r.key);
+  const activeIndexAll = allRatioKeys.indexOf(activeRatio);
+
   // Save current crop state before switching
   const saveCropState = useCallback(() => {
     const cropper = cropperRef.current?.cropper;
@@ -192,16 +196,27 @@ export default function CropTool({
     setEyedropperActive(false);
   }, [activeRatio]);
 
-  // Navigation between ratios
+  // Navigation — cycle through ALL ratios (not just selected)
   const goNext = () => {
-    if (currentIndex < selectedRatioKeys.length - 1) {
-      switchToRatio(selectedRatioKeys[currentIndex + 1]);
+    if (activeIndexAll < allRatioKeys.length - 1) {
+      const nextKey = allRatioKeys[activeIndexAll + 1];
+      saveCropState();
+      // Auto-select the ratio if not already selected
+      if (!selectedRatios[nextKey]) {
+        setSelectedRatios((prev) => ({ ...prev, [nextKey]: true }));
+      }
+      setActiveRatio(nextKey);
     }
   };
 
   const goPrev = () => {
-    if (currentIndex > 0) {
-      switchToRatio(selectedRatioKeys[currentIndex - 1]);
+    if (activeIndexAll > 0) {
+      const prevKey = allRatioKeys[activeIndexAll - 1];
+      saveCropState();
+      if (!selectedRatios[prevKey]) {
+        setSelectedRatios((prev) => ({ ...prev, [prevKey]: true }));
+      }
+      setActiveRatio(prevKey);
     }
   };
 
@@ -346,19 +361,19 @@ export default function CropTool({
   );
 
   return (
-    <div className="flex h-full">
+    <div className="flex flex-col h-full">
+      {/* Low resolution banner — fixed at top */}
+      {hasDisabledSizes && (
+        <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-800 flex-shrink-0">
+          <span className="font-semibold">⚠ Some sizes unavailable</span>
+          <span className="ml-2">Image resolution ({cropSourceDims.width}×{cropSourceDims.height}px) is too low for some print sizes. Sizes below 150 DPI are disabled.</span>
+        </div>
+      )}
+
+      <div className="flex flex-1 min-h-0">
       {/* Left sidebar — ratio selection */}
       <div className="w-72 bg-white border-r border-gray-200 overflow-y-auto p-4 flex-shrink-0">
         <h2 className="font-semibold text-gray-900 mb-3">Select Ratios</h2>
-
-        {/* Low resolution banner */}
-        {hasDisabledSizes && (
-          <div className="mb-3 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
-            <p className="font-semibold mb-1">⚠ Some sizes unavailable</p>
-            <p>Your image resolution ({cropSourceDims.width}×{cropSourceDims.height}px) is too low for some print sizes. Sizes below 150 DPI are disabled to protect print quality.</p>
-            <p className="mt-1 opacity-80">Tip: 300 DPI is the standard for print. An 8×10&quot; print needs at least 2400×3000px.</p>
-          </div>
-        )}
 
         {ratios.map((r) => (
           <div key={r.key} className="mb-3">
@@ -375,7 +390,12 @@ export default function CropTool({
                 }`}
                 onClick={(e) => {
                   e.preventDefault();
-                  if (selectedRatios[r.key]) switchToRatio(r.key);
+                  // Always switch focus — auto-select ratio if needed
+                  if (!selectedRatios[r.key]) {
+                    toggleRatio(r.key);
+                  } else {
+                    switchToRatio(r.key);
+                  }
                 }}
               >
                 {r.name}
@@ -384,28 +404,31 @@ export default function CropTool({
 
             {/* Size checkboxes — always visible so user sees all options */}
             {
-              <div className={`ml-6 mt-1 space-y-1 ${selectedRatios[r.key] ? '' : 'opacity-50'}`}>
+              <div className="ml-6 mt-1 space-y-1">
                 {cropStates[r.key].sizes.map((size, i) => {
                   const badge = getQualityBadge(cropSourceDims.width, cropSourceDims.height, size.width, size.height);
                   return (
-                    <div key={size.label} className="flex items-center gap-1.5">
-                      <label className={`flex items-center gap-1.5 text-xs cursor-pointer ${badge.disabled || !selectedRatios[r.key] ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <div
+                      key={size.label}
+                      className={`flex items-center gap-1.5 rounded px-1 -mx-1 cursor-pointer hover:bg-gray-50 ${badge.disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                      onClick={() => {
+                        if (badge.disabled) return;
+                        // If ratio isn't selected yet, turn it on and switch focus
+                        if (!selectedRatios[r.key]) {
+                          toggleRatio(r.key);
+                        } else if (activeRatio !== r.key) {
+                          switchToRatio(r.key);
+                        }
+                        toggleSize(r.key, i);
+                      }}
+                    >
+                      <label className={`flex items-center gap-1.5 text-xs ${badge.disabled ? 'text-gray-400' : 'text-gray-600'}`}>
                         <input
                           type="checkbox"
-                          checked={!!(size.selected && !badge.disabled && selectedRatios[r.key])}
-                          onChange={() => {
-                            if (badge.disabled) return;
-                            // If ratio isn't selected yet, turn it on and switch focus
-                            if (!selectedRatios[r.key]) {
-                              toggleRatio(r.key);
-                            } else if (activeRatio !== r.key) {
-                              // Ratio is selected but not focused — switch focus
-                              switchToRatio(r.key);
-                            }
-                            toggleSize(r.key, i);
-                          }}
+                          checked={!!(size.selected && !badge.disabled)}
+                          onChange={() => {}}
                           disabled={badge.disabled}
-                          className="rounded border-gray-300"
+                          className="rounded border-gray-300 pointer-events-none"
                         />
                         {size.label}&quot;
                       </label>
@@ -505,7 +528,7 @@ export default function CropTool({
           <div className="flex items-center gap-2">
             <button
               onClick={goPrev}
-              disabled={currentIndex <= 0}
+              disabled={activeIndexAll <= 0}
               className="btn-secondary btn-sm"
             >
               ← Previous
@@ -514,11 +537,9 @@ export default function CropTool({
               {activeRatioData ? (
                 <>
                   {activeRatioData.name}
-                  {selectedRatioKeys.length > 1 && (
-                    <span className="text-gray-400 ml-1">
-                      ({currentIndex + 1}/{selectedRatioKeys.length})
-                    </span>
-                  )}
+                  <span className="text-gray-400 ml-1">
+                    ({activeIndexAll + 1}/{allRatioKeys.length})
+                  </span>
                 </>
               ) : (
                 'Select a ratio to begin'
@@ -526,7 +547,7 @@ export default function CropTool({
             </span>
             <button
               onClick={goNext}
-              disabled={currentIndex >= selectedRatioKeys.length - 1}
+              disabled={activeIndexAll >= allRatioKeys.length - 1}
               className="btn-secondary btn-sm"
             >
               Next →
@@ -589,6 +610,7 @@ export default function CropTool({
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
