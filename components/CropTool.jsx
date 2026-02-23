@@ -128,19 +128,17 @@ export default function CropTool({
 
   // Toggle size selection within a ratio
   const toggleSize = (ratioKey, sizeIndex) => {
-    setCropStates((prev) => {
-      const sizes = [...prev[ratioKey].sizes];
-      sizes[sizeIndex] = { ...sizes[sizeIndex], selected: !sizes[sizeIndex].selected };
-      // If no enabled sizes remain selected, deselect the ratio
-      const anySelected = sizes.some((s, i) => {
-        const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
-        return s.selected && !badge.disabled;
-      });
-      if (!anySelected && selectedRatios[ratioKey]) {
-        toggleRatio(ratioKey);
-      }
-      return { ...prev, [ratioKey]: { ...prev[ratioKey], sizes } };
+    const sizes = [...cropStates[ratioKey].sizes];
+    sizes[sizeIndex] = { ...sizes[sizeIndex], selected: !sizes[sizeIndex].selected };
+    setCropStates((prev) => ({ ...prev, [ratioKey]: { ...prev[ratioKey], sizes } }));
+    // If no enabled sizes remain selected, deselect the ratio
+    const anySelected = sizes.some((s) => {
+      const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
+      return s.selected && !badge.disabled;
     });
+    if (!anySelected && selectedRatios[ratioKey]) {
+      toggleRatio(ratioKey);
+    }
   };
 
   // Background color
@@ -211,26 +209,34 @@ export default function CropTool({
   }, [activeRatio]);
 
   // Navigation — cycle through ALL ratios (not just selected)
+  const isRatioFullyDisabled = (key) =>
+    cropStates[key].sizes.every((size) =>
+      getQualityBadge(originalWidth, originalHeight, size.width, size.height).disabled
+    );
+
   const goNext = () => {
-    if (activeIndexAll < allRatioKeys.length - 1) {
-      const nextKey = allRatioKeys[activeIndexAll + 1];
+    for (let i = activeIndexAll + 1; i < allRatioKeys.length; i++) {
+      const nextKey = allRatioKeys[i];
+      if (isRatioFullyDisabled(nextKey)) continue;
       saveCropState();
-      // Auto-select the ratio if not already selected
       if (!selectedRatios[nextKey]) {
         setSelectedRatios((prev) => ({ ...prev, [nextKey]: true }));
       }
       setActiveRatio(nextKey);
+      return;
     }
   };
 
   const goPrev = () => {
-    if (activeIndexAll > 0) {
-      const prevKey = allRatioKeys[activeIndexAll - 1];
+    for (let i = activeIndexAll - 1; i >= 0; i--) {
+      const prevKey = allRatioKeys[i];
+      if (isRatioFullyDisabled(prevKey)) continue;
       saveCropState();
       if (!selectedRatios[prevKey]) {
         setSelectedRatios((prev) => ({ ...prev, [prevKey]: true }));
       }
       setActiveRatio(prevKey);
+      return;
     }
   };
 
@@ -574,7 +580,7 @@ export default function CropTool({
             <div className="flex items-center gap-2">
               <button
                 onClick={goPrev}
-                disabled={activeIndexAll <= 0}
+                disabled={!allRatioKeys.slice(0, activeIndexAll).some((k) => !isRatioFullyDisabled(k))}
                 className="btn-secondary btn-sm"
               >
                 ← Previous
@@ -593,7 +599,7 @@ export default function CropTool({
               </span>
               <button
                 onClick={goNext}
-                disabled={activeIndexAll >= allRatioKeys.length - 1}
+                disabled={!allRatioKeys.slice(activeIndexAll + 1).some((k) => !isRatioFullyDisabled(k))}
                 className="btn-secondary btn-sm"
               >
                 Next →

@@ -19,3 +19,4 @@ npm-debug.log*
 *.tsbuildinfo
 .env
 .vscode/
+.claude/
