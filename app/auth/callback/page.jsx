@@ -29,6 +29,17 @@ export default function AuthCallbackPage() {
           return;
         }
 
+        // Password recovery — redirect to reset-password page
+        const tokenType = hashParams.get('type');
+        if (tokenType === 'recovery') {
+          setStatus('Redirecting to password reset...');
+          setTimeout(() => {
+            router.push('/auth/reset-password');
+            router.refresh();
+          }, 500);
+          return;
+        }
+
         // Check if subscription exists, create default if not
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {

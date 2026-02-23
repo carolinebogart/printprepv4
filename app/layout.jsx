@@ -127,9 +127,49 @@ async function Nav() {
 
 function Footer() {
   return (
-    <footer className="bg-white border-t border-gray-200 py-6 mt-12">
-      <div className="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">
-        <p>PrintPrep — Resize your artwork to every print format, at 300 DPI, in seconds.</p>
+    <footer className="bg-white border-t border-gray-200 pt-10 pb-6 mt-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
+          {/* Brand */}
+          <div className="col-span-2 sm:col-span-1">
+            <a href="/" className="text-lg font-bold text-blue-600">PrintPrep</a>
+            <p className="text-sm text-gray-500 mt-2">
+              Resize your artwork to every print format, at 300 DPI, in seconds.
+            </p>
+          </div>
+
+          {/* Product */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Product</h4>
+            <ul className="space-y-2 text-sm">
+              <li><a href="/how-it-works" className="text-gray-500 hover:text-gray-900">How It Works</a></li>
+              <li><a href="/pricing" className="text-gray-500 hover:text-gray-900">Pricing</a></li>
+              <li><a href="/faq" className="text-gray-500 hover:text-gray-900">FAQ</a></li>
+            </ul>
+          </div>
+
+          {/* Company */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Company</h4>
+            <ul className="space-y-2 text-sm">
+              <li><a href="/about" className="text-gray-500 hover:text-gray-900">About</a></li>
+              <li><a href="/contact" className="text-gray-500 hover:text-gray-900">Contact</a></li>
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Legal</h4>
+            <ul className="space-y-2 text-sm">
+              <li><a href="/legal#terms" className="text-gray-500 hover:text-gray-900">Terms of Service</a></li>
+              <li><a href="/legal#privacy" className="text-gray-500 hover:text-gray-900">Privacy Policy</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-200 pt-6 text-center text-sm text-gray-400">
+          <p>&copy; {new Date().getFullYear()} PrintPrep. All rights reserved.</p>
+        </div>
       </div>
     </footer>
   );
