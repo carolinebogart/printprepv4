@@ -382,11 +382,16 @@ export default function CropTool({
       <div className="w-72 bg-white border-r border-gray-200 overflow-y-auto p-4 flex-shrink-0">
         <h2 className="font-semibold text-gray-900 mb-3">Select Ratios</h2>
 
-        {ratios.map((r) => (
+        {ratios.map((r) => {
+          const allSizesDisabled = cropStates[r.key].sizes.every((size) =>
+            getQualityBadge(originalWidth, originalHeight, size.width, size.height).disabled
+          );
+          return (
           <div key={r.key} className="mb-3">
             <div
-              className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1"
+              className={`flex items-center gap-2 rounded px-1 -mx-1 ${allSizesDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'}`}
               onClick={() => {
+                if (allSizesDisabled) return;
                 if (selectedRatios[r.key] && activeRatio === r.key) {
                   // Already active — toggle off
                   toggleRatio(r.key);
@@ -401,14 +406,15 @@ export default function CropTool({
             >
               <input
                 type="checkbox"
-                checked={selectedRatios[r.key]}
+                checked={selectedRatios[r.key] && !allSizesDisabled}
                 onChange={() => {}}
+                disabled={allSizesDisabled}
                 className="rounded border-gray-300 pointer-events-none"
                 tabIndex={-1}
               />
               <span
                 className={`text-sm font-medium ${
-                  activeRatio === r.key ? 'text-blue-600' : 'text-gray-700'
+                  allSizesDisabled ? 'text-gray-400' : activeRatio === r.key ? 'text-blue-600' : 'text-gray-700'
                 }`}
               >
                 {r.name}
@@ -455,7 +461,8 @@ export default function CropTool({
               </div>
             }
           </div>
-        ))}
+        );
+        })}
 
         {/* Background options — always visible */}
         <div className="mt-6 pt-4 border-t border-gray-200">
