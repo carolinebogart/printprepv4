@@ -131,6 +131,14 @@ export default function CropTool({
     setCropStates((prev) => {
       const sizes = [...prev[ratioKey].sizes];
       sizes[sizeIndex] = { ...sizes[sizeIndex], selected: !sizes[sizeIndex].selected };
+      // If no enabled sizes remain selected, deselect the ratio
+      const anySelected = sizes.some((s, i) => {
+        const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
+        return s.selected && !badge.disabled;
+      });
+      if (!anySelected && selectedRatios[ratioKey]) {
+        toggleRatio(ratioKey);
+      }
       return { ...prev, [ratioKey]: { ...prev[ratioKey], sizes } };
     });
   };
@@ -389,7 +397,7 @@ export default function CropTool({
           return (
           <div key={r.key} className="mb-3">
             <div
-              className={`flex items-center gap-2 rounded px-2 py-1 -mx-1 ${allSizesDisabled ? 'opacity-40 cursor-not-allowed' : activeRatio === r.key ? 'bg-blue-50 ring-1 ring-blue-200 cursor-pointer' : 'cursor-pointer hover:bg-gray-50'}`}
+              className={`flex items-center gap-2 rounded px-2 py-1 -mx-1 ${allSizesDisabled ? 'opacity-40 cursor-not-allowed' : activeRatio === r.key ? 'bg-blue-50 border border-blue-200 cursor-pointer' : 'cursor-pointer hover:bg-gray-50'}`}
               onClick={() => {
                 if (allSizesDisabled) return;
                 if (selectedRatios[r.key] && activeRatio === r.key) {
