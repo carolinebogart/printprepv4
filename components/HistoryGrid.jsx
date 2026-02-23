@@ -139,6 +139,18 @@ function ImageCard({
       })
     : [];
 
+  // Determine which outputs are from the latest batch (for "New" badges)
+  // Only badge outputs created within 60s of the newest output
+  const newOutputIds = new Set();
+  if (isNew && sortedOutputs.length > 0) {
+    const timestamps = sortedOutputs.map((o) => new Date(o.created_at || 0).getTime());
+    const latest = Math.max(...timestamps);
+    for (const out of sortedOutputs) {
+      const t = new Date(out.created_at || 0).getTime();
+      if (latest - t < 60_000) newOutputIds.add(out.id);
+    }
+  }
+
   // Group outputs by ratio_key
   const groupedOutputs = {};
   for (const out of sortedOutputs) {
@@ -360,7 +372,7 @@ function ImageCard({
                       </h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                         {ratioOutputs.map((out) => (
-                          <OutputTile key={out.id} output={out} isNew={isNew} />
+                          <OutputTile key={out.id} output={out} isNew={newOutputIds.has(out.id)} />
                         ))}
                       </div>
                     </div>
@@ -370,7 +382,7 @@ function ImageCard({
                 /* Flat list */
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                   {sortedOutputs.map((out) => (
-                    <OutputTile key={out.id} output={out} isNew={isNew} />
+                    <OutputTile key={out.id} output={out} isNew={newOutputIds.has(out.id)} />
                   ))}
                 </div>
               )}
