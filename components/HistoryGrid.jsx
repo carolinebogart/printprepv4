@@ -114,6 +114,7 @@ function ImageCard({
 }) {
   const [showOutputs, setShowOutputs] = useState(isNew);
   const [groupByRatio, setGroupByRatio] = useState(true);
+  const [sortNewestFirst, setSortNewestFirst] = useState(true);
   const cardRef = useRef(null);
 
   // Auto-scroll to highlighted card
@@ -129,14 +130,21 @@ function ImageCard({
       ? `${outputCount} file${outputCount !== 1 ? 's' : ''}`
       : image.status || 'pending';
 
+  // Sort outputs by date
+  const sortedOutputs = image.outputs
+    ? [...image.outputs].sort((a, b) => {
+        const da = new Date(a.created_at || 0);
+        const db = new Date(b.created_at || 0);
+        return sortNewestFirst ? db - da : da - db;
+      })
+    : [];
+
   // Group outputs by ratio_key
   const groupedOutputs = {};
-  if (image.outputs) {
-    for (const out of image.outputs) {
-      const key = out.ratio_key || 'other';
-      if (!groupedOutputs[key]) groupedOutputs[key] = [];
-      groupedOutputs[key].push(out);
-    }
+  for (const out of sortedOutputs) {
+    const key = out.ratio_key || 'other';
+    if (!groupedOutputs[key]) groupedOutputs[key] = [];
+    groupedOutputs[key].push(out);
   }
 
   const ratioCount = Object.keys(groupedOutputs).length;
@@ -290,31 +298,54 @@ function ImageCard({
           {/* Expanded outputs */}
           {showOutputs && (
             <div className="px-4 pb-4">
-              {/* Group toggle (only if multiple ratios) */}
-              {ratioCount > 1 && (
-                <div className="flex items-center gap-2 mb-3">
-                  <button
-                    onClick={() => setGroupByRatio(true)}
-                    className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
-                      groupByRatio
-                        ? 'bg-gray-200 text-gray-800 font-medium'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    Group by ratio
-                  </button>
-                  <button
-                    onClick={() => setGroupByRatio(false)}
-                    className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
-                      !groupByRatio
-                        ? 'bg-gray-200 text-gray-800 font-medium'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    All files
-                  </button>
-                </div>
-              )}
+              {/* Toolbar: group toggle + sort toggle */}
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                {ratioCount > 1 && (
+                  <>
+                    <button
+                      onClick={() => setGroupByRatio(true)}
+                      className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                        groupByRatio
+                          ? 'bg-gray-200 text-gray-800 font-medium'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      Group by ratio
+                    </button>
+                    <button
+                      onClick={() => setGroupByRatio(false)}
+                      className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                        !groupByRatio
+                          ? 'bg-gray-200 text-gray-800 font-medium'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      All files
+                    </button>
+                    <span className="text-gray-300">|</span>
+                  </>
+                )}
+                <button
+                  onClick={() => setSortNewestFirst(true)}
+                  className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                    sortNewestFirst
+                      ? 'bg-gray-200 text-gray-800 font-medium'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Newest first
+                </button>
+                <button
+                  onClick={() => setSortNewestFirst(false)}
+                  className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                    !sortNewestFirst
+                      ? 'bg-gray-200 text-gray-800 font-medium'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Oldest first
+                </button>
+              </div>
 
               {groupByRatio && ratioCount > 1 ? (
                 /* Grouped by ratio */
@@ -329,7 +360,7 @@ function ImageCard({
                       </h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                         {ratioOutputs.map((out) => (
-                          <OutputTile key={out.id} output={out} />
+                          <OutputTile key={out.id} output={out} isNew={isNew} />
                         ))}
                       </div>
                     </div>
@@ -338,8 +369,8 @@ function ImageCard({
               ) : (
                 /* Flat list */
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                  {image.outputs.map((out) => (
-                    <OutputTile key={out.id} output={out} />
+                  {sortedOutputs.map((out) => (
+                    <OutputTile key={out.id} output={out} isNew={isNew} />
                   ))}
                 </div>
               )}
@@ -353,11 +384,15 @@ function ImageCard({
 
 /* ─── Output Tile ────────────────────────────────────────── */
 
-function OutputTile({ output }) {
+function OutputTile({ output, isNew }) {
   const ext = output.format === 'png' ? 'PNG' : 'JPG';
 
   return (
     <div className="group relative">
+      {/* New badge */}
+      {isNew && (
+        <span className="badge-new absolute top-1.5 right-1.5 z-10 text-[9px] px-1.5 py-0.5">New</span>
+      )}
       {/* Thumbnail */}
       <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden flex items-center justify-center p-1 aspect-[4/3] hover:border-blue-300 transition-colors">
         {output.previewUrl ? (
@@ -403,7 +438,14 @@ function OutputTile({ output }) {
         >
           {output.size_label || output.ratio_key}
         </p>
-        <span className="text-[10px] text-gray-400">{ext}</span>
+        <div className="flex items-center justify-center gap-1">
+          <span className="text-[10px] text-gray-400">{ext}</span>
+          {output.created_at && (
+            <span className="text-[9px] text-gray-300" title={new Date(output.created_at).toLocaleString()}>
+              {new Date(output.created_at).toLocaleDateString()}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
