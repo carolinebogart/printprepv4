@@ -109,6 +109,12 @@ export default function CropTool({
     }
   }, [activeRatio]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Check if all sizes in a ratio are below DPI threshold
+  const isRatioFullyDisabled = (key) =>
+    cropStates[key].sizes.every((size) =>
+      getQualityBadge(originalWidth, originalHeight, size.width, size.height).disabled
+    );
+
   // Toggle ratio selection — always switch focus to the toggled-on ratio
   const toggleRatio = (key) => {
     setSelectedRatios((prev) => {
@@ -118,9 +124,23 @@ export default function CropTool({
         saveCropState();
         setActiveRatio(key);
       } else if (activeRatio === key) {
-        // Turning off the active ratio — switch to next selected
-        const remaining = ratios.filter((r) => next[r.key]).map((r) => r.key);
-        setActiveRatio(remaining[0] || null);
+        // Turning off the active ratio — find closest viable selected ratio
+        const keyIndex = allRatioKeys.indexOf(key);
+        const remaining = ratios
+          .filter((r) => next[r.key] && !isRatioFullyDisabled(r.key))
+          .map((r) => r.key);
+        if (remaining.length === 0) {
+          setActiveRatio(null);
+        } else {
+          // Pick the closest selected ratio by index distance
+          const closest = remaining.reduce((best, k) => {
+            const dist = Math.abs(allRatioKeys.indexOf(k) - keyIndex);
+            const bestDist = Math.abs(allRatioKeys.indexOf(best) - keyIndex);
+            return dist < bestDist ? k : best;
+          });
+          saveCropState();
+          setActiveRatio(closest);
+        }
       }
       return next;
     });
@@ -209,11 +229,6 @@ export default function CropTool({
   }, [activeRatio]);
 
   // Navigation — cycle through ALL ratios (not just selected)
-  const isRatioFullyDisabled = (key) =>
-    cropStates[key].sizes.every((size) =>
-      getQualityBadge(originalWidth, originalHeight, size.width, size.height).disabled
-    );
-
   const goNext = () => {
     for (let i = activeIndexAll + 1; i < allRatioKeys.length; i++) {
       const nextKey = allRatioKeys[i];
@@ -403,19 +418,10 @@ export default function CropTool({
           return (
           <div key={r.key} className="mb-3">
             <div
-              className={`flex items-center gap-2 rounded px-2 py-1 -mx-1 ${allSizesDisabled ? 'opacity-40 cursor-not-allowed' : activeRatio === r.key ? 'bg-blue-50 border border-blue-200 cursor-pointer' : 'cursor-pointer hover:bg-gray-50'}`}
+              className={`flex items-center gap-2 rounded px-2 py-1 -mx-1 ${allSizesDisabled ? 'opacity-60 cursor-not-allowed' : activeRatio === r.key ? 'bg-blue-100 border-2 border-blue-400 cursor-pointer' : 'cursor-pointer hover:bg-gray-50'}`}
               onClick={() => {
                 if (allSizesDisabled) return;
-                if (selectedRatios[r.key] && activeRatio === r.key) {
-                  // Already active — toggle off
-                  toggleRatio(r.key);
-                } else if (selectedRatios[r.key]) {
-                  // Selected but not active — switch focus
-                  switchToRatio(r.key);
-                } else {
-                  // Not selected — toggle on
-                  toggleRatio(r.key);
-                }
+                toggleRatio(r.key);
               }}
             >
               <input
@@ -443,7 +449,7 @@ export default function CropTool({
                   return (
                     <div
                       key={size.label}
-                      className={`flex items-center gap-1.5 rounded px-1 -mx-1 cursor-pointer hover:bg-gray-50 ${badge.disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                      className={`flex items-center gap-1.5 rounded px-1 -mx-1 cursor-pointer hover:bg-gray-50 ${badge.disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
                       onClick={() => {
                         if (badge.disabled) return;
                         // If ratio isn't selected yet, turn it on and switch focus
