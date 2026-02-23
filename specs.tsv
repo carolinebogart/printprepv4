@@ -1,0 +1,76 @@
+
+
+PrintPrep v4 — Complete Specifications
+Upload Limits
+Limit	Value
+Max file size	50 MB
+Max pixels	65 MP (~8062×8062)
+Allowed formats	jpg, jpeg, png, tiff, webp, bmp
+Route timeout	60 seconds
+Output Sizes (Portrait)
+Ratio	Sizes (inches)
+2:3	4×6, 8×12, 16×24, 24×36
+3:4	6×8, 9×12, 12×16, 18×24
+4:5	4×5, 8×10, 16×20
+8:11	8×11
+A-Series	A7 (2.91×4.13), A6 (4.13×5.83), A5 (5.83×8.27), A4 (8.27×11.69), A3 (11.69×16.54), A2 (16.54×23.39), A1 (23.39×33.11), A0 (33.11×46.81)
+Landscape = same sizes flipped. 20 sizes per orientation.
+
+DPI Quality Ratings
+Threshold	Rating	Badge Color	Selectable?
+≥ 300	Excellent	Green	Yes
+≥ 200	Good	Yellow	Yes
+≥ 150	Fair	Orange	Yes
+< 150	Low	Red	No (disabled)
+Upload Resolution Tiers (client preview)
+Short Side (px)	Label
+3,600+	High resolution — supports large prints
+2,400+	Good — medium prints up to ~16×20"
+1,800+	Fair — up to ~8×12"
+1,200+	Limited — only small prints (4×6")
+< 1,200	Very low — may not produce print-quality
+Output Processing
+Setting	Value
+Default DPI	300 (env: DEFAULT_DPI)
+Output pixel cap	150 MP (covers A0 at 300 DPI)
+Output JPEG quality	95
+Intermediate crop JPEG quality	98
+Output format	JPEG (solid bg) / PNG (transparent bg)
+Resize kernel	Lanczos3
+Upscale sharpening	sigma: 0.8, m1: 1.0, m2: 0.5
+Fill-box threshold	0.99
+Sharp concurrency	1 thread
+Shadow
+Setting	Value
+Offset	+10px right, +10px down
+Color	rgba(0, 0, 0, 0.5)
+Blur	20px
+Default	Off
+Background
+Setting	Value
+Default	#FFFFFF (white)
+Transparent option	Outputs as PNG
+Invalid hex fallback	White
+Output Filename Pattern
+Example: a4-8.27x11.69in-2481x3507px-210x297mm-1740268800.jpg
+
+Crop Settings
+Setting	Value
+autoCropArea	0.85 (85% fill)
+Crop box movable/resizable	No (image moves, box is fixed)
+Zoom step (buttons)	0.1
+Zoom step (wheel)	0.05
+Overlay opacity	0.35
+Credits & Pricing
+Plan	Monthly	Yearly	Credits
+Starter	$29.99 (30 credits)	$251.99 (360)	$1.00–$0.70/image
+Professional	$89.99 (100)	$720.00 (1,200)	$0.90–$0.60/image
+Enterprise	$399.99 (500)	$2,999.99 (6,000)	$0.80–$0.50/image
+1 credit = 1 image (all output sizes included). Unused credits carry over on upgrade. Credits reset on renewal.
+
+Infrastructure
+Setting	Value
+Build heap	1536 MB (NODE_OPTIONS)
+Runtime GC	--expose-gc enabled
+Storage bucket	printprep-images
+ZIP compression	zlib level 5

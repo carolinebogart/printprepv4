@@ -340,7 +340,7 @@ export default function CropTool({
 
       // Signal the header credits badge to refresh
       window.dispatchEvent(new Event('credits-updated'));
-      router.push(`/download?imageId=${imageId}`);
+      router.push(`/history?new=${imageId}`);
     } catch {
       setError('Processing failed. Please try again.');
       setProcessing(false);

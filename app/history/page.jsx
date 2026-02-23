@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { createServerClient } from '../../lib/supabase/server.js';
 import HistoryGrid from '../../components/HistoryGrid.jsx';
@@ -82,7 +83,9 @@ export default async function HistoryPage() {
         <h1 className="text-2xl font-bold text-gray-900">Image History</h1>
         <a href="/" className="btn-primary text-sm">Upload New Image</a>
       </div>
-      <HistoryGrid images={imagesWithOutputs} />
+      <Suspense fallback={<div className="text-sm text-gray-500 text-center py-8">Loading...</div>}>
+        <HistoryGrid images={imagesWithOutputs} />
+      </Suspense>
     </div>
   );
 }
