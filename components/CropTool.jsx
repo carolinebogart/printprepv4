@@ -279,7 +279,12 @@ export default function CropTool({
 
     for (const ratioKey of selectedRatioKeys) {
       const state = cropStates[ratioKey];
-      const selectedSizes = state.sizes.filter((s) => s.selected);
+      const selectedSizes = state.sizes.filter((s) => {
+        if (!s.selected) return false;
+        // Exclude sizes that are disabled due to low DPI (< 150)
+        const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
+        return !badge.disabled;
+      });
       if (selectedSizes.length === 0) continue;
 
       // Get crop box data — we need to switch to each ratio to get accurate data
