@@ -1,76 +1,228 @@
 
 
 PrintPrep v4 — Complete Specifications
+
+=== UPLOAD & VALIDATION ===
+
 Upload Limits
 Limit	Value
 Max file size	300 MB
 Max pixels	100 MP (~10,000×10,000)
-Allowed formats	jpg, jpeg, png, tiff, webp, bmp
+Allowed formats	JPG, JPEG, PNG, TIFF, WebP, BMP
 Route timeout	60 seconds
+
+Upload Validation Flow
+Step	Behavior
+Client-side extension check	Validates file extension before upload attempt
+Client-side size check	Shows error if file exceeds 300MB before sending
+Resolution tier preview	Shows user which print sizes their image supports (no rejection, just informational)
+Server-side extension check	Validates against allowed formats
+Server-side size check	Rejects if exceeds 300MB
+Server-side pixel check	Rejects if exceeds 100 MP (calculated as width × height)
+Pixel check error message	Shows actual dimensions, MP count, max dimension (~10,000px), and suggests resize
+
+Upload Resolution Tiers (Client Preview)
+Short Side (px)	Label	Implication
+3,600+	High resolution	Supports large prints (A0 and up)
+2,400+	Good	Supports medium prints up to ~16×20"
+1,800+	Fair	Supports sizes up to ~8×12"
+1,200+	Limited	Only small prints (4×6", 4×5")
+< 1,200	Very low	May not produce print-quality output at any size
+
+=== OUTPUT SIZES ===
+
 Output Sizes (Portrait)
-Ratio	Sizes (inches)
-2:3	4×6, 8×12, 16×24, 24×36
-3:4	6×8, 9×12, 12×16, 18×24
-4:5	4×5, 8×10, 16×20
-8:11	8×11
-A-Series	A7 (2.91×4.13), A6 (4.13×5.83), A5 (5.83×8.27), A4 (8.27×11.69), A3 (11.69×16.54), A2 (16.54×23.39), A1 (23.39×33.11), A0 (33.11×46.81)
-Landscape = same sizes flipped. 20 sizes per orientation.
+Ratio	Sizes (inches)	Count
+2:3	4×6, 8×12, 16×24, 24×36	4
+3:4	6×8, 9×12, 12×16, 18×24	4
+4:5	4×5, 8×10, 16×20	3
+8:11	8×11	1
+A-Series (ISO)	A7 (2.91×4.13), A6 (4.13×5.83), A5 (5.83×8.27), A4 (8.27×11.69), A3 (11.69×16.54), A2 (16.54×23.39), A1 (23.39×33.11), A0 (33.11×46.81)	8
+Total portrait sizes	5 ratios × 20 sizes = 20 total	20
 
-DPI Quality Ratings
-Threshold	Rating	Badge Color	Selectable?
-≥ 300	Excellent	Green	Yes
-≥ 200	Good	Yellow	Yes
-≥ 150	Fair	Orange	Yes
-< 150	Low	Red	No (disabled)
-Upload Resolution Tiers (client preview)
-Short Side (px)	Label
-3,600+	High resolution — supports large prints
-2,400+	Good — medium prints up to ~16×20"
-1,800+	Fair — up to ~8×12"
-1,200+	Limited — only small prints (4×6")
-< 1,200	Very low — may not produce print-quality
-Output Processing
+Output Sizes (Landscape)
+All portrait sizes flipped to landscape orientation (width ↔ height). Same count: 20 total.
+Note: Landscape auto-selected if image aspect ratio is wider than portrait; portrait auto-selected if taller.
+
+=== DPI & SIZE SELECTION ===
+
+DPI Quality Ratings (Calculated per size)
+Threshold	Rating	Badge Color	Selectable?	Notes
+≥ 300 DPI	Excellent	Green	Yes	Professional print quality
+≥ 200 DPI	Good	Yellow	Yes	High-quality print
+≥ 150 DPI	Fair	Orange	Yes	Acceptable print quality
+< 150 DPI	Low quality	Red	No (disabled)	Unacceptable for print; grayed out and unclickable
+
+DPI Calculation
+Formula	DPI = min(image_width / size_width_inches, image_height / size_height_inches)
+Explanation	Uses the minimum of horizontal/vertical DPI to be conservative. A 1200×1800px image targeting 4×6" yields min(300, 300) = 300 DPI.
+
+Size Selection Behavior
+Behavior	Details
+Individual sizes	User can check/uncheck individual sizes within a selected ratio
+All sizes disabled	If all sub-sizes in a ratio fall below 150 DPI, the ratio itself is grayed out (opacity-60) and unclickable
+Auto-deselect ratio	When user unchecks the last enabled (non-disabled) size in a ratio, the ratio checkbox automatically unchecks
+Smart ratio switching	When user unchecks the currently-active ratio, tool switches focus to the closest selected ratio (by index distance); if no other ratios selected, returns to "Select a ratio to begin" state
+Disabled size styling	Grayed text (opacity-60) + disabled checkbox; hover has no effect
+Ratio active highlight	Blue background (bg-blue-100) + blue border (border-2 border-blue-400) shows which ratio is currently being edited
+Next/Previous navigation	Skips fully-disabled ratios (all sub-sizes below 150 DPI); buttons disable when no valid ratio remains in that direction
+
+=== IMAGE CROPPING ===
+
+Crop Tool Behavior
 Setting	Value
-Default DPI	300 (env: DEFAULT_DPI)
-Output pixel cap	150 MP (covers A0 at 300 DPI)
-Output JPEG quality	95
-Intermediate crop JPEG quality	98
-Output format	JPEG (solid bg) / PNG (transparent bg)
-Resize kernel	Lanczos3
-Upscale sharpening	sigma: 0.8, m1: 1.0, m2: 0.5
-Fill-box threshold	0.99
-Sharp concurrency	1 thread
-Shadow
-Setting	Value
+Crop box	Fixed in center; user adjusts image position/zoom instead
+Aspect ratio	Locked to selected ratio (enforced by Cropper.js)
+Auto-fill threshold	0.85 (85% of crop box should be filled with image)
+Zoom step (buttons)	0.1 (10% per click)
+Zoom step (wheel)	0.05 (5% per wheel notch)
+Overlay opacity	0.35 (35% alpha on darkened area outside crop)
+Crop box movable	No (fixed area)
+Crop box resizable	No (fixed area)
+Wheel zoom direction	Normal (scroll up = zoom in)
+
+Background & Shadow
+Background Color
+Default	#FFFFFF (white/solid)
+User option	Custom hex color or transparent
+Transparent output	Outputs as PNG (preserves alpha); solid colors output as JPEG
+Invalid hex fallback	Reverts to white (#FFFFFF)
+
+Shadow Effect
+Default	Off (unchecked)
 Offset	+10px right, +10px down
-Color	rgba(0, 0, 0, 0.5)
-Blur	20px
-Default	Off
-Background
+Color	rgba(0, 0, 0, 0.5) (black, 50% opacity)
+Blur	20px (Gaussian blur)
+Note	Shadow increases file size; only enable when needed
+
+=== OUTPUT PROCESSING ===
+
+Processing Constraints
 Setting	Value
-Default	#FFFFFF (white)
-Transparent option	Outputs as PNG
-Invalid hex fallback	White
+Default output DPI	300 DPI (env: DEFAULT_DPI)
+Output pixel cap	150 MP (limits A0 at 300 DPI to ~139.5 MP)
+Max sharp concurrency	1 thread (reduces memory pressure; conservative on Railway Pro)
+Intermediate storage	JPEG buffers at 98% quality (space-efficient)
+Resize algorithm	Lanczos3 (high-quality resampling)
+
+Output Quality
+Setting	Value
+Final JPEG quality	95 (excellent balance of file size and quality)
+Intermediate JPEG quality	98 (used for crop extraction; high fidelity)
+Upscale sharpening	sigma: 0.8, m1: 1.0, m2: 0.5 (mild sharpening for upscaled images)
+
 Output Filename Pattern
-Example: a4-8.27x11.69in-2481x3507px-210x297mm-1740268800.jpg
+Format	{ratio}-{width_in}x{height_in}in-{width_px}x{height_px}px-{width_mm}x{height_mm}mm-{timestamp}.{ext}
+Example	a4-8.27x11.69in-2481x3507px-210x297mm-1740268800.jpg
+A-Series naming	Uses lowercase letter + number (e.g., a0, a1, a4) instead of ratio (e.g., "2:3")
+Timestamp	Unix seconds (10 digits, sortable)
 
-Crop Settings
-Setting	Value
-autoCropArea	0.85 (85% fill)
-Crop box movable/resizable	No (image moves, box is fixed)
-Zoom step (buttons)	0.1
-Zoom step (wheel)	0.05
-Overlay opacity	0.35
-Credits & Pricing
-Plan	Monthly	Yearly	Credits
-Starter	$29.99 (30 credits)	$251.99 (360)	$1.00–$0.70/image
-Professional	$89.99 (100)	$720.00 (1,200)	$0.90–$0.60/image
-Enterprise	$399.99 (500)	$2,999.99 (6,000)	$0.80–$0.50/image
-1 credit = 1 image (all output sizes included). Unused credits carry over on upgrade. Credits reset on renewal.
+Output Format
+Solid background	JPEG (format: image/jpeg, quality: 95%)
+Transparent background	PNG (format: image/png, preserves alpha channel)
 
-Infrastructure
-Setting	Value
-Build heap	1536 MB (NODE_OPTIONS)
-Runtime GC	--expose-gc enabled
-Storage bucket	printprep-images
-ZIP compression	zlib level 5
+=== USER INTERFACE ===
+
+Ratio Selection Sidebar
+Feature	Behavior
+Ratio list	5 ratios per orientation; shows all available options
+Checked state	Indicates ratio is selected (will be processed)
+Active highlight	Blue background + border when ratio is currently being edited
+Disabled state	Grayed out (opacity-60) when all sub-sizes fall below 150 DPI threshold
+Click interaction	Toggles ratio on/off; clicking active ratio switches it off; clicking another ratio auto-selects it and sets it active
+Keyboard interaction	Not implemented (pointer/touch only)
+
+Size Selection (within Ratio)
+Feature	Behavior
+Nested under ratio	Each ratio shows 3-8 sub-sizes, indented beneath the ratio name
+Checkbox state	Shows checked if selected and not disabled
+DPI badge	Color-coded (green/yellow/orange/red) with DPI value and quality label
+Disabled sizes	Grayed text, disabled checkbox, unclickable; appears below 150 DPI threshold
+Hover state	Enabled: light gray background; Disabled: no hover effect
+Click interaction	Toggles size on/off (unless disabled); automatically selects parent ratio if not already selected
+
+Image Editor Pane
+Feature	Behavior
+Ratio name & counter	Displays active ratio name, current position (e.g., "1 of 5")
+Navigation buttons	"← Previous" and "Next →" buttons; skip disabled ratios; disable when no valid ratio in that direction
+Zoom controls	Zoom in (−) and zoom out (+) buttons; default zoom level: 100%
+Zoom value display	Shows current zoom as percentage (e.g., "150%")
+Color picker	Enables when ratio is active; shows current background color or checkerboard (transparent)
+Eyedropper tool	Available when ratio is active; allows clicking image to sample color
+Shadow toggle	Checkbox to enable/disable drop shadow effect (only when ratio active)
+
+=== CREDITS & PRICING ===
+
+Subscription Plans
+Plan	Monthly	Yearly	Monthly Credits	Yearly Credits	Per-Image Cost (Monthly)	Per-Image Cost (Yearly)
+Starter	$29.99	$251.99	30	360	$1.00	$0.70
+Professional	$89.99	$720.00	100	1,200	$0.90	$0.60
+Enterprise	$399.99	$2,999.99	500	6,000	$0.80	$0.50
+
+Credit System
+Unit	1 credit = 1 image (all selected output sizes included, no per-size charge)
+Carryover	Unused credits carry over when upgrading mid-cycle
+Renewal	Credits reset to plan allocation on renewal date
+Cancellation	Cancelled subscriptions retain remaining credits for use until depleted
+Grace period	Active subscription = can upload; cancelled with credits = can upload; cancelled without credits = cannot upload
+
+=== INFRASTRUCTURE ===
+
+Deployment Platform
+Provider	Railway
+Tier	Pro (Railway Flex)
+vCPU per replica	Up to 8 vCPU
+RAM per replica	Up to 8 GB
+Max replicas	Up to 6
+Monthly allowance	$5 usage credit included
+
+Node.js Runtime
+Heap allocation	6 GB (NODE_OPTIONS: --max-old-space-size=6144)
+GC behavior	--expose-gc enabled (manual garbage collection available)
+Runtime	Node.js (engine specified in package.json)
+
+Image Processing
+Library	Sharp (libvips wrapper)
+Concurrency limit	1 thread (single-threaded to conserve memory)
+GC strategy	Aggressive GC on large files
+
+Storage
+Primary bucket	Supabase Storage (printprep-images)
+Upload path	user_id/image_id/{original_filename}
+Metadata storage	Supabase PostgreSQL (images table)
+ZIP archives	Stored in same bucket; compression: zlib level 5
+
+Database
+Provider	Supabase PostgreSQL
+Tables	users, subscriptions, images, batches, outputs
+Auth	Supabase Auth (OAuth + email/password)
+
+=== ERROR HANDLING & VALIDATION ===
+
+Upload Error Scenarios
+Error	HTTP Status	Message	Recovery
+File not provided	400	No file provided	User must select file
+Invalid extension	400	Invalid file type. Allowed: {list}	Convert file to supported format
+File size exceeded	400	File exceeds 300MB limit	Compress or resize image
+Pixel limit exceeded	400	Image is too large (WxH = XMP). Maximum ~10,000×10,000px (100MP). Please resize…	Resize image using external tool
+FormData parse timeout	413	File too large to upload. Please try a smaller file or compress it first.	Compress image, try again
+No subscription	403	No active subscription or credits remaining	Purchase subscription or add credits
+File read error	500	Internal server error (logged)	Retry upload; contact support if persists
+
+=== FEATURE FLAGS & SETTINGS ===
+
+Client-Side (Next.js)
+Dynamic rendering	App uses React hooks for client-side state (ratios, sizes, background, shadow, zoom)
+Orientation detection	Auto-detects portrait/landscape from image aspect ratio
+Pre-selection	Largest size in each ratio auto-selected by default
+
+Server-Side (API)
+Metadata extraction	Sharp.metadata() extracts width, height, space (color profile)
+EXIF preservation	EXIF data not explicitly preserved in outputs (standard for web)
+Color profile conversion	sRGB assumed for outputs (no ICC profile embedded)
+
+Database Triggers & Constraints
+Image validation	width, height, aspect_ratio calculated on insert
+Subscription auto-renewal	Stripe webhook updates subscription status
+Output batch tracking	batch_id groups all outputs from one generation
+Timestamp tracking	created_at (server time), updated_at (on modification)
