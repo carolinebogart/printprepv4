@@ -77,7 +77,7 @@ export default async function HomePage() {
         <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">How It Works</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {[
-            { step: 1, title: 'Upload', desc: 'Upload your high-resolution artwork (up to 50MB).' },
+            { step: 1, title: 'Upload', desc: 'Upload your high-resolution artwork (up to 300MB).' },
             { step: 2, title: 'Crop', desc: 'Adjust the crop for each print ratio. The tool shows exactly what gets cut.' },
             { step: 3, title: 'Generate', desc: 'We create every selected size at 300 DPI, ready for print.' },
             { step: 4, title: 'Download', desc: 'Download individual files or a ZIP of everything.' },

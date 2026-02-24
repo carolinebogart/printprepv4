@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'tiff', 'webp', 'bmp'];
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 300 * 1024 * 1024; // 300MB
 
 // Resolution thresholds for print quality (300 DPI)
 // Short side of image determines what print sizes are possible
@@ -40,7 +40,7 @@ export default function UploadForm({ isLoggedIn, isActive, hasCredits }) {
       return `Invalid file type. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}`;
     }
     if (f.size > MAX_FILE_SIZE) {
-      return `File too large. Maximum size: 50MB. Your file: ${(f.size / 1024 / 1024).toFixed(1)}MB`;
+      return `File too large. Maximum size: 300MB. Your file: ${(f.size / 1024 / 1024).toFixed(1)}MB`;
     }
     return null;
   }, []);
@@ -141,7 +141,7 @@ export default function UploadForm({ isLoggedIn, isActive, hasCredits }) {
               <span className="font-medium text-blue-600">Click to browse</span> or drag and drop
             </p>
             <p className="text-sm text-gray-500">
-              JPG, PNG, TIFF, WebP, BMP — up to 50MB
+              JPG, PNG, TIFF, WebP, BMP — up to 300MB
             </p>
           </div>
         )}

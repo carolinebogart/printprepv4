@@ -18,7 +18,7 @@ export default function HowItWorksPage() {
         <Step
           number="1"
           title="Upload Your Artwork"
-          description="Upload a high-resolution JPG, PNG, TIFF, WebP, or BMP file — up to 50 MB and 65 megapixels. The higher the resolution, the more sizes you can produce at print quality."
+          description="Upload a high-resolution JPG, PNG, TIFF, WebP, or BMP file — up to 300 MB and 100 megapixels. The higher the resolution, the more sizes you can produce at print quality."
         />
         <Step
           number="2"
