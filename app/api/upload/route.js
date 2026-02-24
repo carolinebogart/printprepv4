@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 60; // seconds
 
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'tiff', 'webp', 'bmp'];
-const MAX_FILE_SIZE = 300 * 1024 * 1024; // 300MB
+const MAX_FILE_SIZE = 400 * 1024 * 1024; // 400MB
 const MAX_PIXELS = 100_000_000; // ~10,000×10,000 — covers A0 at ~220 DPI
 
 export async function POST(request) {
@@ -70,7 +70,7 @@ export async function POST(request) {
     // Validate size
     const buffer = Buffer.from(await file.arrayBuffer());
     if (buffer.length > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: 'File exceeds 300MB limit' }, { status: 400 });
+      return NextResponse.json({ error: 'File exceeds 400MB limit' }, { status: 400 });
     }
 
     // Extract metadata

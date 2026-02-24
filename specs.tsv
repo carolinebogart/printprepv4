@@ -6,7 +6,7 @@ PrintPrep v4 — Complete Specifications
 
 Upload Limits
 Limit	Value
-Max file size	300 MB
+Max file size	400 MB
 Max pixels	100 MP (~10,000×10,000)
 Allowed formats	JPG, JPEG, PNG, TIFF, WebP, BMP
 Route timeout	60 seconds
@@ -14,10 +14,10 @@ Route timeout	60 seconds
 Upload Validation Flow
 Step	Behavior
 Client-side extension check	Validates file extension before upload attempt
-Client-side size check	Shows error if file exceeds 300MB before sending
+Client-side size check	Shows error if file exceeds 400MB before sending
 Resolution tier preview	Shows user which print sizes their image supports (no rejection, just informational)
 Server-side extension check	Validates against allowed formats
-Server-side size check	Rejects if exceeds 300MB
+Server-side size check	Rejects if exceeds 400MB
 Server-side pixel check	Rejects if exceeds 100 MP (calculated as width × height)
 Pixel check error message	Shows actual dimensions, MP count, max dimension (~10,000px), and suggests resize
 
@@ -203,7 +203,7 @@ Upload Error Scenarios
 Error	HTTP Status	Message	Recovery
 File not provided	400	No file provided	User must select file
 Invalid extension	400	Invalid file type. Allowed: {list}	Convert file to supported format
-File size exceeded	400	File exceeds 300MB limit	Compress or resize image
+File size exceeded	400	File exceeds 400MB limit	Compress or resize image
 Pixel limit exceeded	400	Image is too large (WxH = XMP). Maximum ~10,000×10,000px (100MP). Please resize…	Resize image using external tool
 FormData parse timeout	413	File too large to upload. Please try a smaller file or compress it first.	Compress image, try again
 No subscription	403	No active subscription or credits remaining	Purchase subscription or add credits

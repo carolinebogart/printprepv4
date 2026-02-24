@@ -13,7 +13,7 @@ export default function FAQPage() {
       <div className="space-y-3">
         <FAQItem
           question="What file formats can I upload?"
-          answer="PrintPrep accepts JPG, JPEG, PNG, TIFF, WebP, and BMP files. Maximum file size is 300 MB, and the image can be up to 100 megapixels (roughly 10,000×10,000 pixels)."
+          answer="PrintPrep accepts JPG, JPEG, PNG, TIFF, WebP, and BMP files. Maximum file size is 400 MB, and the image can be up to 100 megapixels (roughly 10,000×10,000 pixels)."
         />
         <FAQItem
           question="What does '300 DPI' mean, and why does it matter?"
@@ -74,7 +74,7 @@ export default function FAQPage() {
         />
         <FAQItem
           question="What happens if my upload is too large?"
-          answer="Files over 300 MB or 100 megapixels will be rejected at upload. If your image is large but under the limits, PrintPrep handles the heavy lifting server-side — you don't need a powerful computer."
+          answer="Files over 400 MB or 100 megapixels will be rejected at upload. If your image is large but under the limits, PrintPrep handles the heavy lifting server-side — you don't need a powerful computer."
         />
       </div>
 
