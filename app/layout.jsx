@@ -145,6 +145,7 @@ function Footer() {
               <li><a href="/how-it-works" className="text-gray-500 hover:text-gray-900">How It Works</a></li>
               <li><a href="/pricing" className="text-gray-500 hover:text-gray-900">Pricing</a></li>
               <li><a href="/faq" className="text-gray-500 hover:text-gray-900">FAQ</a></li>
+              <li><a href="/resolution-calculator" className="text-gray-500 hover:text-gray-900">Resolution Calculator</a></li>
             </ul>
           </div>
 
