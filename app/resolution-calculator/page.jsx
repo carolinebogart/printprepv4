@@ -2,22 +2,64 @@
 
 import { useState } from 'react';
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// ── Preset groups ─────────────────────────────────────────────────────────────
 
-const PRESETS = [
-  { label: '4×6"',   w: 4,     h: 6     },
-  { label: '5×7"',   w: 5,     h: 7     },
-  { label: '8×10"',  w: 8,     h: 10    },
-  { label: '8×11"',  w: 8,     h: 11    },
-  { label: '8×12"',  w: 8,     h: 12    },
-  { label: '11×14"', w: 11,    h: 14    },
-  { label: '16×20"', w: 16,    h: 20    },
-  { label: '18×24"', w: 18,    h: 24    },
-  { label: '24×36"', w: 24,    h: 36    },
-  { label: 'A5',     w: 5.83,  h: 8.27  },
-  { label: 'A4',     w: 8.27,  h: 11.69 },
-  { label: 'A3',     w: 11.69, h: 16.54 },
+const PRESET_GROUPS = [
+  {
+    name: '2:3',
+    sizes: [
+      { label: '4×6',   wIn: 4,    hIn: 6,    wCm: 10.16,  hCm: 15.24  },
+      { label: '12×18', wIn: 12,   hIn: 18,   wCm: 30.48,  hCm: 45.72  },
+      { label: '16×24', wIn: 16,   hIn: 24,   wCm: 40.64,  hCm: 60.96  },
+      { label: '20×30', wIn: 20,   hIn: 30,   wCm: 50.8,   hCm: 76.2   },
+      { label: '24×36', wIn: 24,   hIn: 36,   wCm: 60.96,  hCm: 91.44  },
+      { label: '40×60', wIn: 40,   hIn: 60,   wCm: 101.6,  hCm: 152.4  },
+    ],
+  },
+  {
+    name: '3:4',
+    sizes: [
+      { label: '9×12',  wIn: 9,    hIn: 12,   wCm: 22.86,  hCm: 30.48  },
+      { label: '12×16', wIn: 12,   hIn: 16,   wCm: 30.48,  hCm: 40.64  },
+      { label: '18×24', wIn: 18,   hIn: 24,   wCm: 45.72,  hCm: 60.96  },
+      { label: '30×40', wIn: 30,   hIn: 40,   wCm: 76.2,   hCm: 101.6  },
+      { label: '36×48', wIn: 36,   hIn: 48,   wCm: 91.44,  hCm: 121.92 },
+    ],
+  },
+  {
+    name: '4:5',
+    sizes: [
+      { label: '8×10',  wIn: 8,    hIn: 10,   wCm: 20.32,  hCm: 25.4   },
+      { label: '16×20', wIn: 16,   hIn: 20,   wCm: 40.64,  hCm: 50.8   },
+      { label: '24×30', wIn: 24,   hIn: 30,   wCm: 60.96,  hCm: 76.2   },
+      { label: '40×50', wIn: 40,   hIn: 50,   wCm: 101.6,  hCm: 127    },
+      { label: '48×60', wIn: 48,   hIn: 60,   wCm: 121.92, hCm: 152.4  },
+    ],
+  },
+  {
+    name: 'Paper',
+    sizes: [
+      { label: '8.5×11', wIn: 8.5, hIn: 11,   wCm: 21.59,  hCm: 27.94 },
+      { label: '11×14',  wIn: 11,  hIn: 14,   wCm: 27.94,  hCm: 35.56 },
+      { label: '11×17',  wIn: 11,  hIn: 17,   wCm: 27.94,  hCm: 43.18 },
+    ],
+  },
+  {
+    name: 'A-Series',
+    sizes: [
+      { label: 'A7', wIn: 2.9,  hIn: 4.1,  wCm: 7.4,   hCm: 10.4  },
+      { label: 'A6', wIn: 4.1,  hIn: 5.8,  wCm: 10.4,  hCm: 14.7  },
+      { label: 'A5', wIn: 5.8,  hIn: 8.3,  wCm: 14.7,  hCm: 21.1  },
+      { label: 'A4', wIn: 8.3,  hIn: 11.7, wCm: 21.1,  hCm: 29.7  },
+      { label: 'A3', wIn: 11.7, hIn: 16.5, wCm: 29.7,  hCm: 41.9  },
+      { label: 'A2', wIn: 16.5, hIn: 23.4, wCm: 41.9,  hCm: 59.5  },
+      { label: 'A1', wIn: 23.4, hIn: 33.1, wCm: 59.5,  hCm: 84.1  },
+      { label: 'A0', wIn: 33.1, hIn: 46.8, wCm: 84.1,  hCm: 118.9 },
+    ],
+  },
 ];
+
+// ── DPI quality reference ─────────────────────────────────────────────────────
 
 const DPI_LEVELS = [
   { label: 'Excellent', range: '300+ DPI',      detail: 'ideal for all professional print',               color: 'text-green-700  bg-green-50  border-green-200'  },
@@ -54,21 +96,13 @@ function getQuality(dpi) {
 }
 
 // ── Core calculation ──────────────────────────────────────────────────────────
-//
-// Input→Output rules (user-specified):
-//   inches + DPI → px
-//   inches       → cm
-//   pixels + DPI → in
-//   pixels + DPI → cm
-//   cm + DPI     → px
-//   cm           → in
 
 function calculateAll(vals) {
   let wPx = pos(vals.widthPx),  wIn = pos(vals.widthIn),  wCm = pos(vals.widthCm);
   let hPx = pos(vals.heightPx), hIn = pos(vals.heightIn), hCm = pos(vals.heightCm);
   let dpi = pos(vals.dpi);
 
-  // Step 1: Resolve all inch values (in ↔ cm ↔ px/dpi)
+  // Step 1: Resolve inch values
   if (!wIn && wCm)        wIn = wCm / 2.54;
   if (!wIn && wPx && dpi) wIn = wPx / dpi;
   if (!hIn && hCm)        hIn = hCm / 2.54;
@@ -88,7 +122,7 @@ function calculateAll(vals) {
     if (!hPx && dpi) hPx = hIn * dpi;
   }
 
-  // Step 4: Second pass — px+dpi → in → cm (for cases where inches weren't entered)
+  // Step 4: Second pass — px+dpi → in → cm
   if (!wIn && wPx && dpi) { wIn = wPx / dpi; if (!wCm) wCm = wIn * 2.54; }
   if (!hIn && hPx && dpi) { hIn = hPx / dpi; if (!hCm) hCm = hIn * 2.54; }
 
@@ -98,14 +132,13 @@ function calculateAll(vals) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ResolutionCalculatorPage() {
-  const [fields, setFields]           = useState(EMPTY);
-  const [computed, setComputed]       = useState(new Set());
-  const [hasCalculated, setHasCalc]   = useState(false);
-  const [error, setError]             = useState('');
+  const [fields, setFields]         = useState(EMPTY);
+  const [computed, setComputed]     = useState(new Set());
+  const [hasCalculated, setHasCalc] = useState(false);
+  const [error, setError]           = useState('');
 
   function handleChange(field, value) {
     setFields(prev => ({ ...prev, [field]: value }));
-    // Clear computed status when user edits a field
     setComputed(prev => { const s = new Set(prev); s.delete(field); return s; });
     setError('');
   }
@@ -114,7 +147,6 @@ export default function ResolutionCalculatorPage() {
     const result = calculateAll(fields);
     const { wPx, wIn, wCm, hPx, hIn, hCm, dpi } = result;
 
-    // Check if we got anything useful
     if (!wIn && !wPx && !wCm && !hIn && !hPx && !hCm && !dpi) {
       setError('Enter at least two values to calculate.');
       return;
@@ -123,25 +155,13 @@ export default function ResolutionCalculatorPage() {
     const newComputed = new Set();
     const newFields   = { ...fields };
 
-    function fill(key, origKey, val, decimals = 2, round = false) {
-      if (val !== null && fields[origKey] === '') {
-        newFields[key] = round ? String(Math.round(val)) : fmt(val, decimals);
-        newComputed.add(key);
-      } else if (val !== null && fields[origKey] === '') {
-        newFields[key] = round ? String(Math.round(val)) : fmt(val, decimals);
-      }
-    }
-
-    // Width
-    if (wPx  !== null && fields.widthPx  === '') { newFields.widthPx  = String(Math.round(wPx));   newComputed.add('widthPx');  }
-    if (wIn  !== null && fields.widthIn  === '') { newFields.widthIn  = fmt(wIn, 4);                newComputed.add('widthIn');  }
-    if (wCm  !== null && fields.widthCm  === '') { newFields.widthCm  = fmt(wCm, 2);                newComputed.add('widthCm');  }
-    // Height
-    if (hPx  !== null && fields.heightPx === '') { newFields.heightPx = String(Math.round(hPx));   newComputed.add('heightPx'); }
-    if (hIn  !== null && fields.heightIn === '') { newFields.heightIn = fmt(hIn, 4);                newComputed.add('heightIn'); }
-    if (hCm  !== null && fields.heightCm === '') { newFields.heightCm = fmt(hCm, 2);                newComputed.add('heightCm'); }
-    // DPI
-    if (dpi  !== null && fields.dpi      === '') { newFields.dpi      = fmt(dpi, 1);               newComputed.add('dpi');      }
+    if (wPx !== null && fields.widthPx  === '') { newFields.widthPx  = String(Math.round(wPx)); newComputed.add('widthPx');  }
+    if (wIn !== null && fields.widthIn  === '') { newFields.widthIn  = fmt(wIn, 4);              newComputed.add('widthIn');  }
+    if (wCm !== null && fields.widthCm  === '') { newFields.widthCm  = fmt(wCm, 2);              newComputed.add('widthCm');  }
+    if (hPx !== null && fields.heightPx === '') { newFields.heightPx = String(Math.round(hPx)); newComputed.add('heightPx'); }
+    if (hIn !== null && fields.heightIn === '') { newFields.heightIn = fmt(hIn, 4);              newComputed.add('heightIn'); }
+    if (hCm !== null && fields.heightCm === '') { newFields.heightCm = fmt(hCm, 2);              newComputed.add('heightCm'); }
+    if (dpi !== null && fields.dpi      === '') { newFields.dpi      = fmt(dpi, 1);              newComputed.add('dpi');      }
 
     setFields(newFields);
     setComputed(newComputed);
@@ -149,10 +169,24 @@ export default function ResolutionCalculatorPage() {
     setError('');
   }
 
-  function handlePreset(w, h) {
-    setFields({ ...EMPTY, widthIn: String(w), heightIn: String(h) });
-    setComputed(new Set());
-    setHasCalc(false);
+  function handlePreset(size) {
+    const presetFields = {
+      widthIn:  String(size.wIn),
+      heightIn: String(size.hIn),
+      widthCm:  String(size.wCm),
+      heightCm: String(size.hCm),
+      dpi:      '300',
+      widthPx:  '',
+      heightPx: '',
+    };
+    const result = calculateAll(presetFields);
+    setFields({
+      ...presetFields,
+      widthPx:  result.wPx !== null ? String(Math.round(result.wPx)) : '',
+      heightPx: result.hPx !== null ? String(Math.round(result.hPx)) : '',
+    });
+    setComputed(new Set(['widthPx', 'heightPx']));
+    setHasCalc(true);
     setError('');
   }
 
@@ -273,22 +307,29 @@ export default function ResolutionCalculatorPage() {
         </div>
       </div>
 
-      {/* Preset sizes */}
+      {/* Preset sizes — grouped by ratio */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Common Print Sizes</h2>
-        <div className="flex flex-wrap gap-2">
-          {PRESETS.map(preset => (
-            <button
-              key={preset.label}
-              onClick={() => handlePreset(preset.w, preset.h)}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 transition-colors"
-            >
-              {preset.label}
-            </button>
+        <h2 className="text-sm font-semibold text-gray-700 mb-4">Common Print Sizes</h2>
+        <div className="space-y-3">
+          {PRESET_GROUPS.map(group => (
+            <div key={group.name} className="flex items-start gap-3">
+              <span className="text-xs font-semibold text-gray-400 w-16 shrink-0 pt-1.5">{group.name}</span>
+              <div className="flex flex-wrap gap-1.5">
+                {group.sizes.map(size => (
+                  <button
+                    key={size.label}
+                    onClick={() => handlePreset(size)}
+                    className="px-2.5 py-1 text-xs rounded-md border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 transition-colors"
+                  >
+                    {size.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
-        <p className="text-xs text-gray-400 mt-3">
-          Clicking a size fills the inch dimensions. Add your pixel count or target DPI, then click Calculate.
+        <p className="text-xs text-gray-400 mt-4">
+          Selecting a size fills all fields at 300 DPI. Adjust the DPI field and click Calculate to recalculate pixels.
         </p>
       </div>
 
