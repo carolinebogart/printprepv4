@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Cropper from 'react-cropper';
 import 'cropperjs/dist/cropper.css';
+import ResolutionCalculatorModal from './ResolutionCalculatorModal';
 
 export default function CropTool({
   imageId,
@@ -47,6 +48,9 @@ export default function CropTool({
   // Processing state
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
+
+  // Resolution calculator modal
+  const [calcOpen, setCalcOpen] = useState(false);
 
   // (DPI badges now use original image dimensions directly)
 
@@ -656,6 +660,9 @@ export default function CropTool({
               <button onClick={zoomOut} className="btn-secondary btn-sm" title="Zoom out">−</button>
               <button onClick={zoomIn} className="btn-secondary btn-sm" title="Zoom in">+</button>
               <button onClick={resetCrop} className="btn-secondary btn-sm" title="Reset">Reset</button>
+              <button onClick={() => setCalcOpen(true)} className="btn-secondary btn-sm" title="Resolution calculator">
+                Calculator
+              </button>
             </div>
           </div>
         </div>
@@ -718,6 +725,7 @@ export default function CropTool({
         </div>
       </div>
       </div>
+      <ResolutionCalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
     </div>
   );
 }
