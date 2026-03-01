@@ -20,10 +20,10 @@ const PRESETS = [
 ];
 
 const DPI_LEVELS = [
-  { label: 'Excellent', range: '300+ DPI',      detail: 'ideal for all professional print',              color: 'text-green-700  bg-green-50  border-green-200'  },
+  { label: 'Excellent', range: '300+ DPI',      detail: 'ideal for all professional print',               color: 'text-green-700  bg-green-50  border-green-200'  },
   { label: 'Good',      range: '200–299 DPI',   detail: 'suitable for most home & online print services', color: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
-  { label: 'Fair',      range: '150–199 DPI',   detail: 'may appear slightly soft at full size',          color: 'text-orange-600 bg-orange-50 border-orange-200' },
-  { label: 'Low',       range: 'below 150 DPI', detail: 'likely to appear pixelated when printed',        color: 'text-red-600    bg-red-50    border-red-200'    },
+  { label: 'Fair',      range: '150–199 DPI',   detail: 'may appear slightly soft at full size',           color: 'text-orange-600 bg-orange-50 border-orange-200' },
+  { label: 'Low',       range: 'below 150 DPI', detail: 'likely to appear pixelated when printed',         color: 'text-red-600    bg-red-50    border-red-200'    },
 ];
 
 const EMPTY = {
@@ -34,11 +34,15 @@ const EMPTY = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// Format a number for display: strip trailing decimal zeros
 function fmt(n, decimals = 2) {
-  if (!isFinite(n)) return '';
+  if (!isFinite(n) || n === null) return '';
   const str = n.toFixed(decimals);
   return str.includes('.') ? str.replace(/\.?0+$/, '') : str;
+}
+
+function pos(v) {
+  const n = parseFloat(v);
+  return isFinite(n) && n > 0 ? n : null;
 }
 
 function getQuality(dpi) {
@@ -49,98 +53,121 @@ function getQuality(dpi) {
   return             { label: 'Low',       color: 'text-red-600 bg-red-50 border-red-200' };
 }
 
-// ── Core computation ──────────────────────────────────────────────────────────
+// ── Core calculation ──────────────────────────────────────────────────────────
 //
-// Variables: px, in, cm, dpi
-// Constraints: cm = in × 2.54   and   px = in × dpi
-// Knowing any 2 of (px, in, dpi) → can derive the third.
-// cm and in are always linked.
+// Input→Output rules (user-specified):
+//   inches + DPI → px
+//   inches       → cm
+//   pixels + DPI → in
+//   pixels + DPI → cm
+//   cm + DPI     → px
+//   cm           → in
 
-function compute(f, manual) {
-  // Parse only manually-entered fields
-  const p = {};
-  for (const k in f) {
-    const n = parseFloat(f[k]);
-    p[k] = manual.has(k) && f[k] !== '' && isFinite(n) ? n : NaN;
+function calculateAll(vals) {
+  let wPx = pos(vals.widthPx),  wIn = pos(vals.widthIn),  wCm = pos(vals.widthCm);
+  let hPx = pos(vals.heightPx), hIn = pos(vals.heightIn), hCm = pos(vals.heightCm);
+  let dpi = pos(vals.dpi);
+
+  // Step 1: Resolve all inch values (in ↔ cm ↔ px/dpi)
+  if (!wIn && wCm)        wIn = wCm / 2.54;
+  if (!wIn && wPx && dpi) wIn = wPx / dpi;
+  if (!hIn && hCm)        hIn = hCm / 2.54;
+  if (!hIn && hPx && dpi) hIn = hPx / dpi;
+
+  // Step 2: Derive DPI if not provided
+  if (!dpi && wPx && wIn) dpi = wPx / wIn;
+  if (!dpi && hPx && hIn) dpi = hPx / hIn;
+
+  // Step 3: Fill cm and px from inches + dpi
+  if (wIn) {
+    if (!wCm) wCm = wIn * 2.54;
+    if (!wPx && dpi) wPx = wIn * dpi;
+  }
+  if (hIn) {
+    if (!hCm) hCm = hIn * 2.54;
+    if (!hPx && dpi) hPx = hIn * dpi;
   }
 
-  const out = { ...f };
+  // Step 4: Second pass — px+dpi → in → cm (for cases where inches weren't entered)
+  if (!wIn && wPx && dpi) { wIn = wPx / dpi; if (!wCm) wCm = wIn * 2.54; }
+  if (!hIn && hPx && dpi) { hIn = hPx / dpi; if (!hCm) hCm = hIn * 2.54; }
 
-  // Step 1: in ↔ cm sync (entering either updates the other, never conflict)
-  if (!isNaN(p.widthIn))   out.widthCm  = fmt(p.widthIn * 2.54);
-  if (!isNaN(p.widthCm))   out.widthIn  = fmt(p.widthCm / 2.54, 4);
-  if (!isNaN(p.heightIn))  out.heightCm = fmt(p.heightIn * 2.54);
-  if (!isNaN(p.heightCm))  out.heightIn = fmt(p.heightCm / 2.54, 4);
-
-  // Parse full state (includes newly computed in/cm values)
-  const a = {};
-  for (const k in out) { const n = parseFloat(out[k]); a[k] = isFinite(n) ? n : NaN; }
-
-  // Step 2: derive DPI from whichever row has both px and in
-  if (!manual.has('dpi')) {
-    if (!isNaN(a.widthPx)  && !isNaN(a.widthIn)  && a.widthIn  > 0) out.dpi = fmt(a.widthPx  / a.widthIn,  1);
-    else if (!isNaN(a.heightPx) && !isNaN(a.heightIn) && a.heightIn > 0) out.dpi = fmt(a.heightPx / a.heightIn, 1);
-    const n = parseFloat(out.dpi); a.dpi = isFinite(n) ? n : NaN;
-  }
-
-  // Step 3: fill remaining px or in fields using DPI
-  if (!isNaN(a.dpi) && a.dpi > 0) {
-    if (!isNaN(a.widthIn)  && isNaN(a.widthPx)  && !manual.has('widthPx'))  out.widthPx  = String(Math.round(a.widthIn  * a.dpi));
-    if (!isNaN(a.heightIn) && isNaN(a.heightPx) && !manual.has('heightPx')) out.heightPx = String(Math.round(a.heightIn * a.dpi));
-
-    if (!isNaN(a.widthPx)  && isNaN(a.widthIn)  && !manual.has('widthIn')) {
-      const wIn = a.widthPx / a.dpi;
-      out.widthIn = fmt(wIn, 4);
-      out.widthCm = fmt(wIn * 2.54);
-    }
-    if (!isNaN(a.heightPx) && isNaN(a.heightIn) && !manual.has('heightIn')) {
-      const hIn = a.heightPx / a.dpi;
-      out.heightIn = fmt(hIn, 4);
-      out.heightCm = fmt(hIn * 2.54);
-    }
-  }
-
-  return out;
+  return { wPx, wIn, wCm, hPx, hIn, hCm, dpi };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ResolutionCalculatorPage() {
-  const [fields, setFields] = useState(EMPTY);
-  const [manual, setManual] = useState(new Set());
+  const [fields, setFields]           = useState(EMPTY);
+  const [computed, setComputed]       = useState(new Set());
+  const [hasCalculated, setHasCalc]   = useState(false);
+  const [error, setError]             = useState('');
 
   function handleChange(field, value) {
-    const newManual = new Set(manual);
-    if (value === '') {
-      newManual.delete(field);
-    } else {
-      newManual.add(field);
-      // in ↔ cm are always linked — entering one resets the other to computed
-      if (field === 'widthIn')  newManual.delete('widthCm');
-      if (field === 'widthCm')  newManual.delete('widthIn');
-      if (field === 'heightIn') newManual.delete('heightCm');
-      if (field === 'heightCm') newManual.delete('heightIn');
+    setFields(prev => ({ ...prev, [field]: value }));
+    // Clear computed status when user edits a field
+    setComputed(prev => { const s = new Set(prev); s.delete(field); return s; });
+    setError('');
+  }
+
+  function handleCalculate() {
+    const result = calculateAll(fields);
+    const { wPx, wIn, wCm, hPx, hIn, hCm, dpi } = result;
+
+    // Check if we got anything useful
+    if (!wIn && !wPx && !wCm && !hIn && !hPx && !hCm && !dpi) {
+      setError('Enter at least two values to calculate.');
+      return;
     }
-    setManual(newManual);
-    setFields(compute({ ...fields, [field]: value }, newManual));
+
+    const newComputed = new Set();
+    const newFields   = { ...fields };
+
+    function fill(key, origKey, val, decimals = 2, round = false) {
+      if (val !== null && fields[origKey] === '') {
+        newFields[key] = round ? String(Math.round(val)) : fmt(val, decimals);
+        newComputed.add(key);
+      } else if (val !== null && fields[origKey] === '') {
+        newFields[key] = round ? String(Math.round(val)) : fmt(val, decimals);
+      }
+    }
+
+    // Width
+    if (wPx  !== null && fields.widthPx  === '') { newFields.widthPx  = String(Math.round(wPx));   newComputed.add('widthPx');  }
+    if (wIn  !== null && fields.widthIn  === '') { newFields.widthIn  = fmt(wIn, 4);                newComputed.add('widthIn');  }
+    if (wCm  !== null && fields.widthCm  === '') { newFields.widthCm  = fmt(wCm, 2);                newComputed.add('widthCm');  }
+    // Height
+    if (hPx  !== null && fields.heightPx === '') { newFields.heightPx = String(Math.round(hPx));   newComputed.add('heightPx'); }
+    if (hIn  !== null && fields.heightIn === '') { newFields.heightIn = fmt(hIn, 4);                newComputed.add('heightIn'); }
+    if (hCm  !== null && fields.heightCm === '') { newFields.heightCm = fmt(hCm, 2);                newComputed.add('heightCm'); }
+    // DPI
+    if (dpi  !== null && fields.dpi      === '') { newFields.dpi      = fmt(dpi, 1);               newComputed.add('dpi');      }
+
+    setFields(newFields);
+    setComputed(newComputed);
+    setHasCalc(true);
+    setError('');
   }
 
   function handlePreset(w, h) {
-    const newManual = new Set(['widthIn', 'heightIn']);
-    setManual(newManual);
-    setFields(compute({ ...EMPTY, widthIn: String(w), heightIn: String(h) }, newManual));
+    setFields({ ...EMPTY, widthIn: String(w), heightIn: String(h) });
+    setComputed(new Set());
+    setHasCalc(false);
+    setError('');
   }
 
   function handleClear() {
     setFields(EMPTY);
-    setManual(new Set());
+    setComputed(new Set());
+    setHasCalc(false);
+    setError('');
   }
 
   const dpiNum  = parseFloat(fields.dpi);
-  const quality = getQuality(dpiNum);
+  const quality = hasCalculated ? getQuality(dpiNum) : null;
 
   function cellClass(field) {
-    const isComputed = fields[field] !== '' && !manual.has(field);
+    const isComputed = computed.has(field);
     const base = 'w-full rounded-lg border px-3 py-2 text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors';
     return isComputed
       ? `${base} border-blue-200 bg-blue-50 text-blue-700 focus:bg-white focus:text-gray-900`
@@ -158,7 +185,7 @@ export default function ResolutionCalculatorPage() {
         <h1 className="text-3xl font-bold text-gray-900">Resolution Calculator</h1>
         <p className="text-gray-500 mt-3">
           Convert between pixels, inches, centimeters, and DPI.<br />
-          Fill in any two values — the rest compute automatically.
+          Fill in what you know, then click Calculate.
         </p>
       </div>
 
@@ -176,17 +203,17 @@ export default function ResolutionCalculatorPage() {
         {/* Width row */}
         <div className="grid grid-cols-[5rem_1fr_1fr_1fr] gap-3 mb-3 items-center">
           <div className={rowLabel}>Width</div>
-          <input type="number" min="0" step="1"    placeholder="—" value={fields.widthPx}  onChange={e => handleChange('widthPx',  e.target.value)} className={cellClass('widthPx')}  />
-          <input type="number" min="0" step="any"  placeholder="—" value={fields.widthIn}  onChange={e => handleChange('widthIn',  e.target.value)} className={cellClass('widthIn')}  />
-          <input type="number" min="0" step="any"  placeholder="—" value={fields.widthCm}  onChange={e => handleChange('widthCm',  e.target.value)} className={cellClass('widthCm')}  />
+          <input type="number" min="0" step="1"   placeholder="—" value={fields.widthPx}  onChange={e => handleChange('widthPx',  e.target.value)} className={cellClass('widthPx')}  />
+          <input type="number" min="0" step="any" placeholder="—" value={fields.widthIn}  onChange={e => handleChange('widthIn',  e.target.value)} className={cellClass('widthIn')}  />
+          <input type="number" min="0" step="any" placeholder="—" value={fields.widthCm}  onChange={e => handleChange('widthCm',  e.target.value)} className={cellClass('widthCm')}  />
         </div>
 
         {/* Height row */}
         <div className="grid grid-cols-[5rem_1fr_1fr_1fr] gap-3 items-center">
           <div className={rowLabel}>Height</div>
-          <input type="number" min="0" step="1"    placeholder="—" value={fields.heightPx} onChange={e => handleChange('heightPx', e.target.value)} className={cellClass('heightPx')} />
-          <input type="number" min="0" step="any"  placeholder="—" value={fields.heightIn} onChange={e => handleChange('heightIn', e.target.value)} className={cellClass('heightIn')} />
-          <input type="number" min="0" step="any"  placeholder="—" value={fields.heightCm} onChange={e => handleChange('heightCm', e.target.value)} className={cellClass('heightCm')} />
+          <input type="number" min="0" step="1"   placeholder="—" value={fields.heightPx} onChange={e => handleChange('heightPx', e.target.value)} className={cellClass('heightPx')} />
+          <input type="number" min="0" step="any" placeholder="—" value={fields.heightIn} onChange={e => handleChange('heightIn', e.target.value)} className={cellClass('heightIn')} />
+          <input type="number" min="0" step="any" placeholder="—" value={fields.heightCm} onChange={e => handleChange('heightCm', e.target.value)} className={cellClass('heightCm')} />
         </div>
 
         {/* Divider */}
@@ -212,7 +239,12 @@ export default function ResolutionCalculatorPage() {
           )}
         </div>
 
-        {/* Legend + Clear */}
+        {/* Error */}
+        {error && (
+          <p className="mt-4 text-sm text-red-600">{error}</p>
+        )}
+
+        {/* Legend + actions */}
         <div className="mt-5 flex items-center justify-between">
           <div className="flex items-center gap-5 text-xs text-gray-400">
             <span className="flex items-center gap-1.5">
@@ -224,12 +256,20 @@ export default function ResolutionCalculatorPage() {
               Computed
             </span>
           </div>
-          <button
-            onClick={handleClear}
-            className="text-sm text-gray-400 hover:text-gray-700 underline underline-offset-2"
-          >
-            Clear all
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleClear}
+              className="text-sm text-gray-400 hover:text-gray-700 underline underline-offset-2"
+            >
+              Clear
+            </button>
+            <button
+              onClick={handleCalculate}
+              className="btn-primary btn-sm"
+            >
+              Calculate
+            </button>
+          </div>
         </div>
       </div>
 
@@ -248,7 +288,7 @@ export default function ResolutionCalculatorPage() {
           ))}
         </div>
         <p className="text-xs text-gray-400 mt-3">
-          Clicking a size fills the inch dimensions. Enter your pixel dimensions or a target DPI to see the result.
+          Clicking a size fills the inch dimensions. Add your pixel count or target DPI, then click Calculate.
         </p>
       </div>
 
