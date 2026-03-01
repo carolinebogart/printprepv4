@@ -8,58 +8,56 @@ const PRESET_GROUPS = [
   {
     name: '2:3',
     sizes: [
-      { label: '4×6',   wIn: 4,    hIn: 6,    wCm: 10.16,  hCm: 15.24  },
-      { label: '12×18', wIn: 12,   hIn: 18,   wCm: 30.48,  hCm: 45.72  },
-      { label: '16×24', wIn: 16,   hIn: 24,   wCm: 40.64,  hCm: 60.96  },
-      { label: '20×30', wIn: 20,   hIn: 30,   wCm: 50.8,   hCm: 76.2   },
-      { label: '24×36', wIn: 24,   hIn: 36,   wCm: 60.96,  hCm: 91.44  },
-      { label: '40×60', wIn: 40,   hIn: 60,   wCm: 101.6,  hCm: 152.4  },
+      { label: '4×6',   wIn: 4,    hIn: 6    },
+      { label: '12×18', wIn: 12,   hIn: 18   },
+      { label: '16×24', wIn: 16,   hIn: 24   },
+      { label: '20×30', wIn: 20,   hIn: 30   },
+      { label: '24×36', wIn: 24,   hIn: 36   },
+      { label: '40×60', wIn: 40,   hIn: 60   },
     ],
   },
   {
     name: '3:4',
     sizes: [
-      { label: '9×12',  wIn: 9,    hIn: 12,   wCm: 22.86,  hCm: 30.48  },
-      { label: '12×16', wIn: 12,   hIn: 16,   wCm: 30.48,  hCm: 40.64  },
-      { label: '18×24', wIn: 18,   hIn: 24,   wCm: 45.72,  hCm: 60.96  },
-      { label: '30×40', wIn: 30,   hIn: 40,   wCm: 76.2,   hCm: 101.6  },
-      { label: '36×48', wIn: 36,   hIn: 48,   wCm: 91.44,  hCm: 121.92 },
+      { label: '9×12',  wIn: 9,    hIn: 12   },
+      { label: '12×16', wIn: 12,   hIn: 16   },
+      { label: '18×24', wIn: 18,   hIn: 24   },
+      { label: '30×40', wIn: 30,   hIn: 40   },
+      { label: '36×48', wIn: 36,   hIn: 48   },
     ],
   },
   {
     name: '4:5',
     sizes: [
-      { label: '8×10',  wIn: 8,    hIn: 10,   wCm: 20.32,  hCm: 25.4   },
-      { label: '16×20', wIn: 16,   hIn: 20,   wCm: 40.64,  hCm: 50.8   },
-      { label: '24×30', wIn: 24,   hIn: 30,   wCm: 60.96,  hCm: 76.2   },
-      { label: '40×50', wIn: 40,   hIn: 50,   wCm: 101.6,  hCm: 127    },
-      { label: '48×60', wIn: 48,   hIn: 60,   wCm: 121.92, hCm: 152.4  },
+      { label: '8×10',  wIn: 8,    hIn: 10   },
+      { label: '16×20', wIn: 16,   hIn: 20   },
+      { label: '24×30', wIn: 24,   hIn: 30   },
+      { label: '40×50', wIn: 40,   hIn: 50   },
+      { label: '48×60', wIn: 48,   hIn: 60   },
     ],
   },
   {
     name: 'Paper',
     sizes: [
-      { label: '8.5×11', wIn: 8.5, hIn: 11,   wCm: 21.59,  hCm: 27.94 },
-      { label: '11×14',  wIn: 11,  hIn: 14,   wCm: 27.94,  hCm: 35.56 },
-      { label: '11×17',  wIn: 11,  hIn: 17,   wCm: 27.94,  hCm: 43.18 },
+      { label: '8.5×11', wIn: 8.5, hIn: 11   },
+      { label: '11×14',  wIn: 11,  hIn: 14   },
+      { label: '11×17',  wIn: 11,  hIn: 17   },
     ],
   },
   {
     name: 'A-Series',
     sizes: [
-      { label: 'A7', wIn: 2.9,  hIn: 4.1,  wCm: 7.4,   hCm: 10.4  },
-      { label: 'A6', wIn: 4.1,  hIn: 5.8,  wCm: 10.4,  hCm: 14.7  },
-      { label: 'A5', wIn: 5.8,  hIn: 8.3,  wCm: 14.7,  hCm: 21.1  },
-      { label: 'A4', wIn: 8.3,  hIn: 11.7, wCm: 21.1,  hCm: 29.7  },
-      { label: 'A3', wIn: 11.7, hIn: 16.5, wCm: 29.7,  hCm: 41.9  },
-      { label: 'A2', wIn: 16.5, hIn: 23.4, wCm: 41.9,  hCm: 59.5  },
-      { label: 'A1', wIn: 23.4, hIn: 33.1, wCm: 59.5,  hCm: 84.1  },
-      { label: 'A0', wIn: 33.1, hIn: 46.8, wCm: 84.1,  hCm: 118.9 },
+      { label: 'A7', wIn: 2.9,  hIn: 4.1  },
+      { label: 'A6', wIn: 4.1,  hIn: 5.8  },
+      { label: 'A5', wIn: 5.8,  hIn: 8.3  },
+      { label: 'A4', wIn: 8.3,  hIn: 11.7 },
+      { label: 'A3', wIn: 11.7, hIn: 16.5 },
+      { label: 'A2', wIn: 16.5, hIn: 23.4 },
+      { label: 'A1', wIn: 23.4, hIn: 33.1 },
+      { label: 'A0', wIn: 33.1, hIn: 46.8 },
     ],
   },
 ];
-
-// ── DPI quality reference ─────────────────────────────────────────────────────
 
 const DPI_LEVELS = [
   { label: 'Excellent', range: '300+ DPI',      detail: 'ideal for all professional print',               color: 'text-green-700  bg-green-50  border-green-200'  },
@@ -68,23 +66,14 @@ const DPI_LEVELS = [
   { label: 'Low',       range: 'below 150 DPI', detail: 'likely to appear pixelated when printed',         color: 'text-red-600    bg-red-50    border-red-200'    },
 ];
 
-const EMPTY = {
-  widthPx: '', widthIn: '', widthCm: '',
-  heightPx: '', heightIn: '', heightCm: '',
-  dpi: '',
-};
+const UNITS = ['Inches', 'Pixels', 'Centimeters'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmt(n, decimals = 2) {
-  if (!isFinite(n) || n === null) return '';
+  if (!isFinite(n)) return '';
   const str = n.toFixed(decimals);
   return str.includes('.') ? str.replace(/\.?0+$/, '') : str;
-}
-
-function pos(v) {
-  const n = parseFloat(v);
-  return isFinite(n) && n > 0 ? n : null;
 }
 
 function getQuality(dpi) {
@@ -97,119 +86,73 @@ function getQuality(dpi) {
 
 // ── Core calculation ──────────────────────────────────────────────────────────
 
-function calculateAll(vals) {
-  let wPx = pos(vals.widthPx),  wIn = pos(vals.widthIn),  wCm = pos(vals.widthCm);
-  let hPx = pos(vals.heightPx), hIn = pos(vals.heightIn), hCm = pos(vals.heightCm);
-  let dpi = pos(vals.dpi);
+function calculate(width, height, unit, dpiStr) {
+  const w = parseFloat(width);
+  const h = parseFloat(height);
+  const d = parseFloat(dpiStr) > 0 ? parseFloat(dpiStr) : 300;
 
-  // Step 1: Resolve inch values
-  if (!wIn && wCm)        wIn = wCm / 2.54;
-  if (!wIn && wPx && dpi) wIn = wPx / dpi;
-  if (!hIn && hCm)        hIn = hCm / 2.54;
-  if (!hIn && hPx && dpi) hIn = hPx / dpi;
+  if (!isFinite(w) || w <= 0 || !isFinite(h) || h <= 0) return null;
 
-  // Step 2: Derive DPI if not provided
-  if (!dpi && wPx && wIn) dpi = wPx / wIn;
-  if (!dpi && hPx && hIn) dpi = hPx / hIn;
+  let wIn, hIn;
+  if (unit === 'Inches')      { wIn = w;       hIn = h; }
+  else if (unit === 'Pixels') { wIn = w / d;   hIn = h / d; }
+  else                        { wIn = w / 2.54; hIn = h / 2.54; }
 
-  // Step 3: Fill cm and px from inches + dpi
-  if (wIn) {
-    if (!wCm) wCm = wIn * 2.54;
-    if (!wPx && dpi) wPx = wIn * dpi;
-  }
-  if (hIn) {
-    if (!hCm) hCm = hIn * 2.54;
-    if (!hPx && dpi) hPx = hIn * dpi;
-  }
-
-  // Step 4: Second pass — px+dpi → in → cm
-  if (!wIn && wPx && dpi) { wIn = wPx / dpi; if (!wCm) wCm = wIn * 2.54; }
-  if (!hIn && hPx && dpi) { hIn = hPx / dpi; if (!hCm) hCm = hIn * 2.54; }
-
-  return { wPx, wIn, wCm, hPx, hIn, hCm, dpi };
+  return {
+    inches: `${fmt(wIn)} × ${fmt(hIn)}`,
+    pixels: `${Math.round(wIn * d)} × ${Math.round(hIn * d)}`,
+    cm:     `${fmt(wIn * 2.54)} × ${fmt(hIn * 2.54)}`,
+    dpi:    d,
+  };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ResolutionCalculatorPage() {
-  const [fields, setFields]         = useState(EMPTY);
-  const [computed, setComputed]     = useState(new Set());
-  const [hasCalculated, setHasCalc] = useState(false);
-  const [error, setError]           = useState('');
+  const [unit,   setUnit]   = useState('Inches');
+  const [width,  setWidth]  = useState('');
+  const [height, setHeight] = useState('');
+  const [dpi,    setDpi]    = useState('300');
+  const [result, setResult] = useState(null);
+  const [error,  setError]  = useState('');
 
-  function handleChange(field, value) {
-    setFields(prev => ({ ...prev, [field]: value }));
-    setComputed(prev => { const s = new Set(prev); s.delete(field); return s; });
+  const unitSuffix = unit === 'Inches' ? 'in' : unit === 'Pixels' ? 'px' : 'cm';
+
+  function handleUnitChange(u) {
+    setUnit(u);
+    setWidth('');
+    setHeight('');
+    setResult(null);
     setError('');
   }
 
   function handleCalculate() {
-    const result = calculateAll(fields);
-    const { wPx, wIn, wCm, hPx, hIn, hCm, dpi } = result;
-
-    if (!wIn && !wPx && !wCm && !hIn && !hPx && !hCm && !dpi) {
-      setError('Enter at least two values to calculate.');
-      return;
-    }
-
-    const newComputed = new Set();
-    const newFields   = { ...fields };
-
-    if (wPx !== null && fields.widthPx  === '') { newFields.widthPx  = String(Math.round(wPx)); newComputed.add('widthPx');  }
-    if (wIn !== null && fields.widthIn  === '') { newFields.widthIn  = fmt(wIn, 4);              newComputed.add('widthIn');  }
-    if (wCm !== null && fields.widthCm  === '') { newFields.widthCm  = fmt(wCm, 2);              newComputed.add('widthCm');  }
-    if (hPx !== null && fields.heightPx === '') { newFields.heightPx = String(Math.round(hPx)); newComputed.add('heightPx'); }
-    if (hIn !== null && fields.heightIn === '') { newFields.heightIn = fmt(hIn, 4);              newComputed.add('heightIn'); }
-    if (hCm !== null && fields.heightCm === '') { newFields.heightCm = fmt(hCm, 2);              newComputed.add('heightCm'); }
-    if (dpi !== null && fields.dpi      === '') { newFields.dpi      = fmt(dpi, 1);              newComputed.add('dpi');      }
-
-    setFields(newFields);
-    setComputed(newComputed);
-    setHasCalc(true);
+    const r = calculate(width, height, unit, dpi);
+    if (!r) { setError('Enter a width and height to calculate.'); return; }
+    setResult(r);
     setError('');
   }
 
   function handlePreset(size) {
-    const presetFields = {
-      widthIn:  String(size.wIn),
-      heightIn: String(size.hIn),
-      widthCm:  String(size.wCm),
-      heightCm: String(size.hCm),
-      dpi:      '300',
-      widthPx:  '',
-      heightPx: '',
-    };
-    const result = calculateAll(presetFields);
-    setFields({
-      ...presetFields,
-      widthPx:  result.wPx !== null ? String(Math.round(result.wPx)) : '',
-      heightPx: result.hPx !== null ? String(Math.round(result.hPx)) : '',
-    });
-    setComputed(new Set(['widthPx', 'heightPx']));
-    setHasCalc(true);
+    setUnit('Inches');
+    setWidth(String(size.wIn));
+    setHeight(String(size.hIn));
+    setDpi('300');
+    setResult(calculate(String(size.wIn), String(size.hIn), 'Inches', '300'));
     setError('');
   }
 
   function handleClear() {
-    setFields(EMPTY);
-    setComputed(new Set());
-    setHasCalc(false);
+    setWidth('');
+    setHeight('');
+    setDpi('300');
+    setResult(null);
     setError('');
   }
 
-  const dpiNum  = parseFloat(fields.dpi);
-  const quality = hasCalculated ? getQuality(dpiNum) : null;
+  const quality = result ? getQuality(result.dpi) : null;
 
-  function cellClass(field) {
-    const isComputed = computed.has(field);
-    const base = 'w-full rounded-lg border px-3 py-2 text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors';
-    return isComputed
-      ? `${base} border-blue-200 bg-blue-50 text-blue-700 focus:bg-white focus:text-gray-900`
-      : `${base} border-gray-300 bg-white text-gray-900`;
-  }
-
-  const colHeader = 'text-xs font-semibold text-gray-500 uppercase tracking-wide text-center pb-1';
-  const rowLabel  = 'text-sm font-medium text-gray-700 flex items-center';
+  const inputClass = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400';
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-12">
@@ -218,92 +161,113 @@ export default function ResolutionCalculatorPage() {
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold text-gray-900">Resolution Calculator</h1>
         <p className="text-gray-500 mt-3">
-          Convert between pixels, inches, centimeters, and DPI.<br />
-          Fill in what you know, then click Calculate.
+          Enter dimensions in any unit and get the equivalent in all others.
         </p>
       </div>
 
-      {/* Calculator */}
+      {/* Calculator card */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 sm:p-8 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
 
-        {/* Column headers */}
-        <div className="grid grid-cols-[5rem_1fr_1fr_1fr] gap-3 mb-1">
-          <div />
-          <div className={colHeader}>Pixels</div>
-          <div className={colHeader}>Inches</div>
-          <div className={colHeader}>Centimeters</div>
-        </div>
-
-        {/* Width row */}
-        <div className="grid grid-cols-[5rem_1fr_1fr_1fr] gap-3 mb-3 items-center">
-          <div className={rowLabel}>Width</div>
-          <input type="number" min="0" step="1"   placeholder="—" value={fields.widthPx}  onChange={e => handleChange('widthPx',  e.target.value)} className={cellClass('widthPx')}  />
-          <input type="number" min="0" step="any" placeholder="—" value={fields.widthIn}  onChange={e => handleChange('widthIn',  e.target.value)} className={cellClass('widthIn')}  />
-          <input type="number" min="0" step="any" placeholder="—" value={fields.widthCm}  onChange={e => handleChange('widthCm',  e.target.value)} className={cellClass('widthCm')}  />
-        </div>
-
-        {/* Height row */}
-        <div className="grid grid-cols-[5rem_1fr_1fr_1fr] gap-3 items-center">
-          <div className={rowLabel}>Height</div>
-          <input type="number" min="0" step="1"   placeholder="—" value={fields.heightPx} onChange={e => handleChange('heightPx', e.target.value)} className={cellClass('heightPx')} />
-          <input type="number" min="0" step="any" placeholder="—" value={fields.heightIn} onChange={e => handleChange('heightIn', e.target.value)} className={cellClass('heightIn')} />
-          <input type="number" min="0" step="any" placeholder="—" value={fields.heightCm} onChange={e => handleChange('heightCm', e.target.value)} className={cellClass('heightCm')} />
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-gray-100 my-5" />
-
-        {/* DPI + quality */}
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="grid grid-cols-[5rem_1fr] gap-3 items-center">
-            <div className={rowLabel}>DPI</div>
-            <input
-              type="number" min="1" step="any" placeholder="—"
-              value={fields.dpi}
-              onChange={e => handleChange('dpi', e.target.value)}
-              className={`${cellClass('dpi')} w-28`}
-            />
-          </div>
-
-          {quality && (
-            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-semibold ${quality.color}`}>
-              {quality.label}
-              <span className="font-normal text-current opacity-70">· {Math.round(dpiNum)} DPI</span>
+          {/* ── Left: inputs ── */}
+          <div>
+            {/* Unit selector */}
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden mb-5">
+              {UNITS.map(u => (
+                <button
+                  key={u}
+                  onClick={() => handleUnitChange(u)}
+                  className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                    unit === u
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {u}
+                </button>
+              ))}
             </div>
-          )}
-        </div>
 
-        {/* Error */}
-        {error && (
-          <p className="mt-4 text-sm text-red-600">{error}</p>
-        )}
+            {/* Width */}
+            <div className="flex items-center gap-3 mb-3">
+              <label className="text-sm font-medium text-gray-700 w-14 shrink-0">Width</label>
+              <input
+                type="number" min="0" step="any"
+                placeholder={`0 ${unitSuffix}`}
+                value={width}
+                onChange={e => { setWidth(e.target.value); setResult(null); }}
+                className={inputClass}
+              />
+            </div>
 
-        {/* Legend + actions */}
-        <div className="mt-5 flex items-center justify-between">
-          <div className="flex items-center gap-5 text-xs text-gray-400">
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded border border-gray-300 bg-white inline-block" />
-              You entered
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded border border-blue-200 bg-blue-50 inline-block" />
-              Computed
-            </span>
+            {/* Height */}
+            <div className="flex items-center gap-3 mb-3">
+              <label className="text-sm font-medium text-gray-700 w-14 shrink-0">Height</label>
+              <input
+                type="number" min="0" step="any"
+                placeholder={`0 ${unitSuffix}`}
+                value={height}
+                onChange={e => { setHeight(e.target.value); setResult(null); }}
+                className={inputClass}
+              />
+            </div>
+
+            {/* DPI */}
+            <div className="flex items-center gap-3 mb-5">
+              <label className="text-sm font-medium text-gray-700 w-14 shrink-0">DPI</label>
+              <input
+                type="number" min="1" step="1"
+                placeholder="300"
+                value={dpi}
+                onChange={e => { setDpi(e.target.value); setResult(null); }}
+                className={inputClass}
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3">
+              <button onClick={handleCalculate} className="btn-primary btn-sm">
+                Calculate
+              </button>
+              <button
+                onClick={handleClear}
+                className="text-sm text-gray-400 hover:text-gray-700 underline underline-offset-2"
+              >
+                Clear
+              </button>
+            </div>
+
+            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleClear}
-              className="text-sm text-gray-400 hover:text-gray-700 underline underline-offset-2"
-            >
-              Clear
-            </button>
-            <button
-              onClick={handleCalculate}
-              className="btn-primary btn-sm"
-            >
-              Calculate
-            </button>
+
+          {/* ── Right: results ── */}
+          <div className="flex flex-col justify-center">
+            {result ? (
+              <div className="space-y-4">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Inches</div>
+                  <div className="text-sm font-medium text-gray-900">{result.inches} in</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Pixels</div>
+                  <div className="text-sm font-medium text-gray-900">{result.pixels} px</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Centimeters</div>
+                  <div className="text-sm font-medium text-gray-900">{result.cm} cm</div>
+                </div>
+                {quality && (
+                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold ${quality.color}`}>
+                    {quality.label}
+                    <span className="font-normal opacity-70">· {result.dpi} DPI</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-300 text-center sm:text-left">Results appear here</p>
+            )}
           </div>
+
         </div>
       </div>
 
@@ -313,7 +277,7 @@ export default function ResolutionCalculatorPage() {
         <div className="space-y-3">
           {PRESET_GROUPS.map(group => (
             <div key={group.name} className="flex items-start gap-3">
-              <span className="text-xs font-semibold text-gray-400 w-16 shrink-0 pt-1.5">{group.name}</span>
+              <span className="text-xs font-semibold text-gray-400 w-16 shrink-0 pt-1">{group.name}</span>
               <div className="flex flex-wrap gap-1.5">
                 {group.sizes.map(size => (
                   <button
@@ -329,7 +293,7 @@ export default function ResolutionCalculatorPage() {
           ))}
         </div>
         <p className="text-xs text-gray-400 mt-4">
-          Selecting a size fills all fields at 300 DPI. Adjust the DPI field and click Calculate to recalculate pixels.
+          Selecting a size calculates all units at 300 DPI.
         </p>
       </div>
 
