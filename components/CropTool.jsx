@@ -17,6 +17,7 @@ export default function CropTool({
 }) {
   const router = useRouter();
   const cropperRef = useRef(null);
+  const targetCropBoxRef = useRef(null);
 
   // Which ratios are selected
   const [selectedRatios, setSelectedRatios] = useState(() =>
@@ -101,10 +102,22 @@ export default function CropTool({
         if (!c) return;
         try {
           c.setCanvasData(state.canvasData);
-          if (state.cropBoxData) c.setCropBoxData(state.cropBoxData);
+          if (state.cropBoxData) {
+            c.setCropBoxData(state.cropBoxData);
+            targetCropBoxRef.current = { width: state.cropBoxData.width, height: state.cropBoxData.height };
+          } else {
+            computeAndSetCropBox(c, ratio.ratio);
+          }
         } catch (err) {
           // Cropper not ready yet — ignore
         }
+      }, 50);
+    } else {
+      // No saved state — compute and pin a fresh crop box for this ratio
+      setTimeout(() => {
+        const c = cropperRef.current?.cropper;
+        if (!c) return;
+        computeAndSetCropBox(c, ratio.ratio);
       }, 50);
     }
   }, [activeRatio]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -260,15 +273,42 @@ export default function CropTool({
   // Re-pin crop box to fixed size after any zoom so it never shrinks
   const rePinCropBox = useCallback(() => {
     const cropper = cropperRef.current?.cropper;
-    if (!cropper) return;
+    if (!cropper || !targetCropBoxRef.current) return;
     const containerData = cropper.getContainerData();
-    const cropBoxData = cropper.getCropBoxData();
-    // Re-set to the same width/height, re-center
+    const { width: boxW, height: boxH } = targetCropBoxRef.current;
     cropper.setCropBoxData({
-      left: (containerData.width - cropBoxData.width) / 2,
-      top: (containerData.height - cropBoxData.height) / 2,
-      width: cropBoxData.width,
-      height: cropBoxData.height,
+      left: (containerData.width - boxW) / 2,
+      top: (containerData.height - boxH) / 2,
+      width: boxW,
+      height: boxH,
+    });
+  }, []);
+
+  // Compute the 85%-fit crop box size for a given ratio, store it as the target, and apply it
+  const computeAndSetCropBox = useCallback((cropper, ratioVal) => {
+    const containerData = cropper.getContainerData();
+    let boxW, boxH;
+    if (ratioVal >= 1) {
+      boxH = containerData.height * 0.85;
+      boxW = boxH * ratioVal;
+      if (boxW > containerData.width * 0.85) {
+        boxW = containerData.width * 0.85;
+        boxH = boxW / ratioVal;
+      }
+    } else {
+      boxW = containerData.width * 0.85;
+      boxH = boxW / ratioVal;
+      if (boxH > containerData.height * 0.85) {
+        boxH = containerData.height * 0.85;
+        boxW = boxH * ratioVal;
+      }
+    }
+    targetCropBoxRef.current = { width: boxW, height: boxH };
+    cropper.setCropBoxData({
+      left: (containerData.width - boxW) / 2,
+      top: (containerData.height - boxH) / 2,
+      width: boxW,
+      height: boxH,
     });
   }, []);
 
@@ -661,35 +701,9 @@ export default function CropTool({
               highlight={false}
               background={true}
               ready={() => {
-                // Lock crop box to fill the container so it never shrinks
                 const cropper = cropperRef.current?.cropper;
                 if (!cropper) return;
-                const containerData = cropper.getContainerData();
-                const ratio = activeRatioData?.ratio || 1;
-                let boxW, boxH;
-                if (ratio >= 1) {
-                  // Landscape or square — fit by height
-                  boxH = containerData.height * 0.85;
-                  boxW = boxH * ratio;
-                  if (boxW > containerData.width * 0.85) {
-                    boxW = containerData.width * 0.85;
-                    boxH = boxW / ratio;
-                  }
-                } else {
-                  // Portrait — fit by width
-                  boxW = containerData.width * 0.85;
-                  boxH = boxW / ratio;
-                  if (boxH > containerData.height * 0.85) {
-                    boxH = containerData.height * 0.85;
-                    boxW = boxH * ratio;
-                  }
-                }
-                cropper.setCropBoxData({
-                  left: (containerData.width - boxW) / 2,
-                  top: (containerData.height - boxH) / 2,
-                  width: boxW,
-                  height: boxH,
-                });
+                computeAndSetCropBox(cropper, activeRatioData?.ratio || 1);
               }}
               zoom={() => {
                 // After any zoom (including pinch), re-pin crop box
