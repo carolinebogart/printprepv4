@@ -60,6 +60,7 @@ npm run lint
 | `docs/ui-spec.md` | UI/UX specification and design system |
 | `docs/stripe-test-cards.md` | Stripe test card numbers |
 | `docs/impl-order.md` | Recommended build order |
+| `docs/cleanup.md` | Daily cleanup cron — file expiry, retention tiers, endpoint details |
 
 # currentDate
 Today's date is 2026-02-28.
