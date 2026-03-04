@@ -35,7 +35,10 @@ export default function CropTool({
       [r.key]: {
         canvasData: null,
         cropBoxData: null,
-        sizes: r.sizes,
+        sizes: r.sizes.map((s) => {
+          const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
+          return { ...s, useUpscaling: badge.requiresUpscaling || false };
+        }),
         backgroundColor: '#FFFFFF',
         useShadow: false,
       },
@@ -193,6 +196,45 @@ export default function CropTool({
       ...prev,
       [ratioKey]: { ...prev[ratioKey], useShadow: !prev[ratioKey].useShadow },
     }));
+  };
+
+  // Toggle upscaling on a single size
+  const toggleSizeUpscale = (ratioKey, sizeIndex) => {
+    setCropStates((prev) => {
+      const sizes = [...prev[ratioKey].sizes];
+      sizes[sizeIndex] = { ...sizes[sizeIndex], useUpscaling: !sizes[sizeIndex].useUpscaling };
+      return { ...prev, [ratioKey]: { ...prev[ratioKey], sizes } };
+    });
+  };
+
+  // Set upscaling mode for all non-disabled sizes in a ratio
+  const setRatioUpscaleMode = (ratioKey, useUpscaling) => {
+    setCropStates((prev) => {
+      const sizes = prev[ratioKey].sizes.map((s) => {
+        const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
+        if (badge.disabled) return s;
+        return { ...s, useUpscaling };
+      });
+      return { ...prev, [ratioKey]: { ...prev[ratioKey], sizes } };
+    });
+  };
+
+  // Set upscaling mode for all non-disabled sizes in all ratios
+  const setMasterUpscaleMode = (useUpscaling) => {
+    setCropStates((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(next)) {
+        next[key] = {
+          ...next[key],
+          sizes: next[key].sizes.map((s) => {
+            const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
+            if (badge.disabled) return s;
+            return { ...s, useUpscaling };
+          }),
+        };
+      }
+      return next;
+    });
   };
 
   // Eyedropper: pick color from image via overlay click
@@ -386,15 +428,12 @@ export default function CropTool({
       allCropData.push({
         ratioKey,
         cropData,
-        sizes: selectedSizes.map((s) => {
-          const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
-          return {
-            width: s.width,
-            height: s.height,
-            label: s.label,
-            ...(badge.requiresUpscaling ? { useUpscaling: true } : {}),
-          };
-        }),
+        sizes: selectedSizes.map((s) => ({
+          width: s.width,
+          height: s.height,
+          label: s.label,
+          ...(s.useUpscaling ? { useUpscaling: true } : {}),
+        })),
         backgroundColor: state.backgroundColor,
         useShadow: state.useShadow,
       });
@@ -458,10 +497,11 @@ export default function CropTool({
     )
   );
 
-  const hasAIUpscaleSizes = ratios.some((r) =>
-    cropStates[r.key].sizes.some((size) =>
-      getQualityBadge(originalWidth, originalHeight, size.width, size.height).requiresUpscaling
-    )
+  const hasAIUpscaleSizes = selectedRatioKeys.some((key) =>
+    cropStates[key].sizes.some((size) => {
+      const badge = getQualityBadge(originalWidth, originalHeight, size.width, size.height);
+      return size.selected && !badge.disabled && size.useUpscaling;
+    })
   );
 
   return (
@@ -469,7 +509,23 @@ export default function CropTool({
       <div className="flex flex-1 min-h-0">
       {/* Left sidebar — ratio selection */}
       <div className="w-72 bg-white border-r border-gray-200 overflow-y-auto p-4 flex-shrink-0">
-        <h2 className="font-semibold text-gray-900 mb-3">Select Ratios</h2>
+        <h2 className="font-semibold text-gray-900 mb-2">Select Ratios</h2>
+
+        {/* Master upscale toggle */}
+        <div className="flex gap-1.5 mb-3">
+          <button
+            onClick={() => setMasterUpscaleMode(false)}
+            className="flex-1 text-xs py-1 px-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+          >
+            All native
+          </button>
+          <button
+            onClick={() => setMasterUpscaleMode(true)}
+            className="flex-1 text-xs py-1 px-2 rounded border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100"
+          >
+            All AI ✦
+          </button>
+        </div>
 
         {ratios.map((r) => {
           const allSizesDisabled = cropStates[r.key].sizes.every((size) =>
@@ -504,8 +560,32 @@ export default function CropTool({
             {/* Size checkboxes — always visible so user sees all options */}
             {
               <div className="ml-6 mt-1 space-y-1">
+                {/* Per-ratio upscale toggle — shown when ratio has any non-disabled sizes */}
+                {cropStates[r.key].sizes.some((s) => !getQualityBadge(originalWidth, originalHeight, s.width, s.height).disabled) && (
+                  <div className="flex gap-1 mb-1">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setRatioUpscaleMode(r.key, false); }}
+                      className="text-[10px] py-0.5 px-2 rounded border border-gray-200 text-gray-500 hover:bg-gray-50"
+                    >
+                      Native
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setRatioUpscaleMode(r.key, true); }}
+                      className="text-[10px] py-0.5 px-2 rounded border border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100"
+                    >
+                      ✦ Upscale
+                    </button>
+                  </div>
+                )}
                 {cropStates[r.key].sizes.map((size, i) => {
                   const badge = getQualityBadge(originalWidth, originalHeight, size.width, size.height);
+                  const showUpscaleToggle = !badge.disabled && badge.label !== 'Excellent';
+                  const effectiveDpiLabel = size.useUpscaling && !badge.disabled
+                    ? `~${Math.min(badge.dpi * 4, 300)} DPI · AI ✦`
+                    : `${badge.dpi} DPI · ${badge.label}`;
+                  const effectiveBadgeColor = size.useUpscaling && !badge.disabled
+                    ? 'text-blue-700 bg-blue-50 border-blue-200'
+                    : badge.color;
                   return (
                     <div
                       key={size.label}
@@ -532,9 +612,22 @@ export default function CropTool({
                         />
                         {size.label}&quot;
                       </span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${badge.color}`}>
-                        {badge.requiresUpscaling ? `~${badge.estimatedDpi} DPI · AI Upscale` : `${badge.dpi} DPI · ${badge.label}`}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${effectiveBadgeColor}`}>
+                        {effectiveDpiLabel}
                       </span>
+                      {showUpscaleToggle && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleSizeUpscale(r.key, i); }}
+                          className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${
+                            size.useUpscaling
+                              ? 'border-blue-300 text-blue-700 bg-blue-100'
+                              : 'border-gray-200 text-gray-400 bg-white'
+                          }`}
+                          title={size.useUpscaling ? 'AI upscaling on — click to disable' : 'Click to enable AI upscaling'}
+                        >
+                          ✦
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -666,12 +759,12 @@ export default function CropTool({
             )}
             {hasDisabledSizes && (
               <span className="text-amber-700 font-medium">
-                ⚠ Some sizes below 150 DPI are disabled
+                ⚠ Some sizes are too low resolution and cannot be generated
               </span>
             )}
             {hasAIUpscaleSizes && (
               <span className="text-blue-700 font-medium">
-                ✦ Some sizes use AI upscaling
+                ✦ AI upscaling selected for some sizes
               </span>
             )}
           </div>

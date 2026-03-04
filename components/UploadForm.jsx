@@ -10,12 +10,40 @@ const MAX_FILE_SIZE = 400 * 1024 * 1024; // 400MB
 // Resolution thresholds for print quality (300 DPI)
 // Short side of image determines what print sizes are possible
 const RES_TIERS = [
-  { minShort: 3600, label: 'High resolution — supports large prints. Check DPI per size on the next page.', color: 'green' },
-  { minShort: 2400, label: 'Good resolution — supports medium prints up to ~16×20" at 150+ DPI', color: 'green' },
-  { minShort: 1800, label: 'Fair — supports sizes up to ~8×12" at 150+ DPI', color: 'yellow' },
-  { minShort: 1200, label: 'Limited — only small prints (4×6", 4×5")', color: 'orange' },
-  { minShort: 0, label: 'Very low — output will be below 300 DPI at all sizes', color: 'red' },
+  { minShort: 3600, name: 'High resolution',     color: 'green'  },
+  { minShort: 2400, name: 'Good resolution',     color: 'green'  },
+  { minShort: 1800, name: 'Fair resolution',     color: 'yellow' },
+  { minShort: 1200, name: 'Limited resolution',  color: 'orange' },
+  { minShort: 0,    name: 'Very low resolution', color: 'red'    },
 ];
+
+function computeBadgeMessage(qualityData) {
+  const allSizes = qualityData.flatMap((r) => r.sizes);
+  const tierOrder = ['excellent', 'good', 'fair'];
+  const tierLabels = { excellent: 'Excellent', good: 'Good', fair: 'Fair' };
+
+  const upscaleTiers = tierOrder.filter((t) => allSizes.some((s) => s.upscaleCol === t));
+  if (upscaleTiers.length === 0) {
+    return 'Image resolution is too low for any usable output, even with AI upscaling.';
+  }
+
+  const nativeTiers = tierOrder.filter((t) => allSizes.some((s) => s.nativeCol === t));
+  const upscaleOnly = upscaleTiers.filter((t) => !nativeTiers.includes(t));
+
+  const parts = [];
+  if (nativeTiers.length > 0) {
+    parts.push(nativeTiers.map((t) => tierLabels[t]).join(', ') + ' outputs available natively');
+  }
+  if (upscaleOnly.length > 0) {
+    parts.push(`AI upscaling can additionally reach ${upscaleOnly.map((t) => tierLabels[t]).join(', ')}`);
+  } else if (nativeTiers.length === 0) {
+    parts.push(`AI upscaling can reach ${upscaleTiers.map((t) => tierLabels[t]).join(', ')}`);
+  } else {
+    parts.push('AI upscaling can further improve some sizes');
+  }
+  parts.push('see table below');
+  return parts.join(' — ') + '.';
+}
 
 function getResolutionTier(width, height) {
   const shortSide = Math.min(width, height);
@@ -63,12 +91,13 @@ function computeQualityData(imgW, imgH) {
   });
 }
 
-// Quality columns — unavailable on left, excellent on right
+// Quality columns — best on left, unavailable on right
+// w-36 on every column keeps widths identical across all ratio tables when combined with table-fixed
 const QUALITY_COLS = [
-  { id: 'unavailable', label: 'Unavailable', subLabel: 'Low Quality',  thClass: 'text-gray-400 bg-gray-50 border-gray-200'    },
-  { id: 'fair',        label: 'Fair',        subLabel: '150–199 DPI',  thClass: 'text-orange-600 bg-orange-50 border-orange-200' },
-  { id: 'good',        label: 'Good',        subLabel: '200–299 DPI',  thClass: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
-  { id: 'excellent',   label: 'Excellent',   subLabel: '300+ DPI',     thClass: 'text-green-700 bg-green-50 border-green-200'  },
+  { id: 'excellent',   label: 'Excellent',   subLabel: '300+ DPI',     thClass: 'w-36 text-green-700 bg-green-50 border-green-200'   },
+  { id: 'good',        label: 'Good',        subLabel: '200–299 DPI',  thClass: 'w-36 text-yellow-700 bg-yellow-50 border-yellow-200' },
+  { id: 'fair',        label: 'Fair',        subLabel: '150–199 DPI',  thClass: 'w-36 text-orange-600 bg-orange-50 border-orange-200' },
+  { id: 'unavailable', label: 'Unavailable', subLabel: 'Low Quality',  thClass: 'w-36 text-gray-400 bg-gray-50 border-gray-200'      },
 ];
 
 function SizeCell({ sizes, dpiKey }) {
@@ -90,10 +119,10 @@ function QualityPreviewTable({ qualityData }) {
             <span className="text-xs font-semibold text-gray-700">{ratio.name}</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full table-fixed text-xs">
               <thead>
                 <tr>
-                  <th className="px-2 py-1.5 text-left font-medium border-b border-gray-200 bg-white text-gray-500 whitespace-nowrap w-24" />
+                  <th className="w-24 px-2 py-1.5 text-left font-medium border-b border-gray-200 bg-white text-gray-500 whitespace-nowrap" />
                   {QUALITY_COLS.map((col) => (
                     <th key={col.id} className={`px-2 py-1.5 text-left font-medium border-b border-gray-200 whitespace-nowrap ${col.thClass}`}>
                       {col.label}
@@ -113,8 +142,8 @@ function QualityPreviewTable({ qualityData }) {
                   ))}
                 </tr>
                 {/* Row 2: with Real-ESRGAN upscaling */}
-                <tr>
-                  <td className="px-2 py-2 font-medium text-blue-600 whitespace-nowrap">Real-ESRGAN ✦</td>
+                <tr className="bg-blue-50/60">
+                  <td className="px-2 py-2 font-medium text-gray-500 whitespace-nowrap">Real-ESRGAN ✦</td>
                   {QUALITY_COLS.map((col) => (
                     <td key={col.id} className="px-2 py-2 align-top text-gray-700">
                       <SizeCell sizes={ratio.sizes.filter((s) => s.upscaleCol === col.id)} dpiKey="upscaleDpi" />
@@ -270,8 +299,11 @@ export default function UploadForm({ isLoggedIn, isActive, hasCredits }) {
             'bg-red-50 border-red-200 text-red-800'
           }`}>
             <p className="font-semibold">
-              {resolution.tier.color === 'green' ? '✓' : '⚠'} Resolution: {resolution.tier.label}
+              {resolution.tier.color === 'green' ? '✓' : '⚠'} Resolution: {resolution.tier.name}
             </p>
+            {resolution.qualityData && (
+              <p className="text-xs mt-1 opacity-90">{computeBadgeMessage(resolution.qualityData)}</p>
+            )}
           </div>
 
           {/* Pixel + print dimensions */}
