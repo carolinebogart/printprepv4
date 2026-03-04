@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { PORTRAIT_RATIOS, LANDSCAPE_RATIOS } from '@/lib/output-sizes';
 
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'tiff', 'webp', 'bmp'];
 const MAX_FILE_SIZE = 400 * 1024 * 1024; // 400MB
@@ -19,6 +20,104 @@ const RES_TIERS = [
 function getResolutionTier(width, height) {
   const shortSide = Math.min(width, height);
   return RES_TIERS.find((t) => shortSide >= t.minShort);
+}
+
+function getQualityBadge(srcW, srcH, targetWIn, targetHIn) {
+  const effectiveDPI = Math.min(srcW / targetWIn, srcH / targetHIn);
+  if (effectiveDPI >= 300) return { label: 'Excellent', tier: 'excellent', dpi: Math.round(effectiveDPI) };
+  if (effectiveDPI >= 200) return { label: 'Good',      tier: 'good',      dpi: Math.round(effectiveDPI) };
+  if (effectiveDPI >= 150) return { label: 'Fair',      tier: 'fair',      dpi: Math.round(effectiveDPI) };
+  if (effectiveDPI >= 35)  return { label: 'AI Upscale', tier: 'upscale', dpi: Math.round(effectiveDPI), estimatedDpi: Math.min(Math.round(effectiveDPI * 4), 300) };
+  return { label: 'Unavailable', tier: 'disabled', dpi: Math.round(effectiveDPI) };
+}
+
+function getCropSourceDims(imgW, imgH, targetRatio) {
+  const imgRatio = imgW / imgH;
+  if (targetRatio < imgRatio - 0.01) return { w: Math.round(imgH * targetRatio), h: imgH };
+  if (targetRatio > imgRatio + 0.01) return { w: imgW, h: Math.round(imgW / targetRatio) };
+  return { w: imgW, h: imgH };
+}
+
+function computeQualityData(imgW, imgH) {
+  const ratios = imgW >= imgH ? LANDSCAPE_RATIOS : PORTRAIT_RATIOS;
+  return Object.entries(ratios).map(([key, def]) => {
+    const crop = getCropSourceDims(imgW, imgH, def.ratio);
+    return {
+      key,
+      name: def.name,
+      sizes: def.sizes.map((s) => ({ label: s.label, badge: getQualityBadge(crop.w, crop.h, s.width, s.height) })),
+    };
+  });
+}
+
+const TIER_COLS = [
+  { tier: 'excellent', label: 'Excellent',   classes: 'text-green-700 bg-green-50 border-green-200'  },
+  { tier: 'good',      label: 'Good',        classes: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
+  { tier: 'fair',      label: 'Fair',        classes: 'text-orange-600 bg-orange-50 border-orange-200' },
+  { tier: 'upscale',   label: 'AI Upscale ✦', classes: 'text-blue-700 bg-blue-50 border-blue-200'   },
+  { tier: 'disabled',  label: 'Unavailable', classes: 'text-gray-400 bg-gray-50 border-gray-200'    },
+];
+
+function QualityPreviewTable({ qualityData }) {
+  const hasUpscale = qualityData.some((r) => r.sizes.some((s) => s.badge.tier === 'upscale'));
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide px-1">Expected output quality by ratio</p>
+      {qualityData.map((ratio) => {
+        const visibleCols = TIER_COLS.filter((col) => ratio.sizes.some((s) => s.badge.tier === col.tier));
+        if (visibleCols.length === 0) return null;
+
+        return (
+          <div key={ratio.key} className="rounded-lg border border-gray-200 overflow-hidden">
+            <div className="bg-gray-50 border-b border-gray-200 px-3 py-1.5">
+              <span className="text-xs font-semibold text-gray-700">{ratio.name}</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr>
+                    {visibleCols.map((col) => (
+                      <th key={col.tier} className={`px-2 py-1.5 text-left font-medium border-b border-gray-200 ${col.classes}`}>
+                        {col.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {visibleCols.map((col) => {
+                      const sizes = ratio.sizes.filter((s) => s.badge.tier === col.tier);
+                      return (
+                        <td key={col.tier} className="px-2 py-2 align-top text-gray-700">
+                          {sizes.length > 0
+                            ? sizes.map((s) => (
+                                <div key={s.label}>
+                                  {s.label}&quot;
+                                  {s.badge.tier === 'upscale' && (
+                                    <span className="text-gray-400 ml-1">~{s.badge.estimatedDpi} DPI</span>
+                                  )}
+                                </div>
+                              ))
+                            : <span className="text-gray-300">—</span>
+                          }
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })}
+      {hasUpscale && (
+        <p className="text-xs text-gray-400 px-1">
+          ✦ AI Upscale: we will attempt to enhance the image using AI before processing. Estimated result shown.
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function UploadForm({ isLoggedIn, isActive, hasCredits }) {
@@ -63,7 +162,7 @@ export default function UploadForm({ isLoggedIn, isActive, hasCredits }) {
       const img = new Image();
       img.onload = () => {
         const tier = getResolutionTier(img.width, img.height);
-        setResolution({ width: img.width, height: img.height, tier });
+        setResolution({ width: img.width, height: img.height, tier, qualityData: computeQualityData(img.width, img.height) });
         URL.revokeObjectURL(url);
       };
       img.onerror = () => URL.revokeObjectURL(url);
@@ -149,28 +248,33 @@ export default function UploadForm({ isLoggedIn, isActive, hasCredits }) {
 
       {/* Resolution assessment */}
       {resolution && resolution.tier && (
-        <div className={`rounded-lg border p-3 text-sm ${
-          resolution.tier.color === 'green' ? 'bg-green-50 border-green-200 text-green-800' :
-          resolution.tier.color === 'yellow' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
-          resolution.tier.color === 'orange' ? 'bg-orange-50 border-orange-200 text-orange-800' :
-          'bg-red-50 border-red-200 text-red-800'
-        }`}>
-          <p className="font-semibold mb-1">
-            {resolution.tier.color === 'green' ? '✓' : resolution.tier.color === 'yellow' ? '⚠' : '⚠'} Resolution: {resolution.tier.label}
-          </p>
-          {(resolution.tier.color === 'orange' || resolution.tier.color === 'red') && (
-            <div className="text-xs mt-1 space-y-1 opacity-90">
-              <p>Print-quality output requires 300 pixels per inch. For example, an 8×10&quot; print needs 2400×3000px.</p>
-              <p>You can still upload this image, but larger print sizes will be unavailable or reduced quality.</p>
-              {resolution.tier.color === 'red' && (
-                <p className="font-medium">Consider using a higher-resolution source image to get the best results.</p>
-              )}
-            </div>
-          )}
-          {resolution.tier.color === 'yellow' && (
-            <p className="text-xs mt-1 opacity-90">
-              Larger sizes (16×20&quot; and above) may show reduced quality. Smaller prints will look great.
+        <div className="space-y-3 text-sm">
+          {/* Tier badge */}
+          <div className={`rounded-lg border p-3 ${
+            resolution.tier.color === 'green' ? 'bg-green-50 border-green-200 text-green-800' :
+            resolution.tier.color === 'yellow' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
+            resolution.tier.color === 'orange' ? 'bg-orange-50 border-orange-200 text-orange-800' :
+            'bg-red-50 border-red-200 text-red-800'
+          }`}>
+            <p className="font-semibold">
+              {resolution.tier.color === 'green' ? '✓' : '⚠'} Resolution: {resolution.tier.label}
             </p>
+          </div>
+
+          {/* Pixel + print dimensions */}
+          <div className="text-gray-600 text-xs px-1">
+            <span className="font-medium text-gray-800">{resolution.width} × {resolution.height} px</span>
+            {' · '}
+            {(resolution.width / 300).toFixed(1)}&quot; × {(resolution.height / 300).toFixed(1)}&quot;
+            {' '}
+            <span className="text-gray-400">({(resolution.width / 300 * 2.54).toFixed(1)} × {(resolution.height / 300 * 2.54).toFixed(1)} cm)</span>
+            {' '}
+            <span className="text-gray-400">native print size at 300 DPI</span>
+          </div>
+
+          {/* Per-ratio quality table */}
+          {resolution.qualityData && (
+            <QualityPreviewTable qualityData={resolution.qualityData} />
           )}
         </div>
       )}
