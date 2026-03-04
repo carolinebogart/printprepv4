@@ -386,11 +386,15 @@ export default function CropTool({
       allCropData.push({
         ratioKey,
         cropData,
-        sizes: selectedSizes.map((s) => ({
-          width: s.width,
-          height: s.height,
-          label: s.label,
-        })),
+        sizes: selectedSizes.map((s) => {
+          const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
+          return {
+            width: s.width,
+            height: s.height,
+            label: s.label,
+            ...(badge.requiresUpscaling ? { useUpscaling: true } : {}),
+          };
+        }),
         backgroundColor: state.backgroundColor,
         useShadow: state.useShadow,
       });
@@ -451,6 +455,12 @@ export default function CropTool({
   const hasDisabledSizes = ratios.some((r) =>
     cropStates[r.key].sizes.some((size) =>
       getQualityBadge(originalWidth, originalHeight, size.width, size.height).disabled
+    )
+  );
+
+  const hasAIUpscaleSizes = ratios.some((r) =>
+    cropStates[r.key].sizes.some((size) =>
+      getQualityBadge(originalWidth, originalHeight, size.width, size.height).requiresUpscaling
     )
   );
 
@@ -523,7 +533,7 @@ export default function CropTool({
                         {size.label}&quot;
                       </span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${badge.color}`}>
-                        {badge.dpi} DPI · {badge.label}
+                        {badge.requiresUpscaling ? `~${badge.estimatedDpi} DPI · AI Upscale` : `${badge.dpi} DPI · ${badge.label}`}
                       </span>
                     </div>
                   );
@@ -659,6 +669,11 @@ export default function CropTool({
                 ⚠ Some sizes below 150 DPI are disabled
               </span>
             )}
+            {hasAIUpscaleSizes && (
+              <span className="text-blue-700 font-medium">
+                ✦ Some sizes use AI upscaling
+              </span>
+            )}
           </div>
           {/* Row 2: Navigation + zoom */}
           <div className="flex items-center justify-between">
@@ -788,6 +803,10 @@ function getQualityBadge(cropSourceWidth, cropSourceHeight, targetWidthInches, t
   }
   if (effectiveDPI >= 150) {
     return { label: 'Fair', color: 'text-orange-600 bg-orange-50 border-orange-200', dpi: Math.round(effectiveDPI), disabled: false };
+  }
+  if (effectiveDPI >= 35) {
+    const estimatedDpi = Math.min(Math.round(effectiveDPI * 4), 300);
+    return { label: 'AI Upscale', color: 'text-blue-700 bg-blue-50 border-blue-200', dpi: Math.round(effectiveDPI), estimatedDpi, disabled: false, requiresUpscaling: true };
   }
   return { label: 'Low quality', color: 'text-red-600 bg-red-50 border-red-200', dpi: Math.round(effectiveDPI), disabled: true };
 }

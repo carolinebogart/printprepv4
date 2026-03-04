@@ -1,6 +1,6 @@
 import { createServerClient } from '../../../lib/supabase/server.js';
 import { createServiceClient } from '../../../lib/supabase/service.js';
-import { extractCrop, resizeToTarget } from '../../../lib/image-processor.js';
+import { extractCrop, resizeToTarget, upscaleCropWithAI } from '../../../lib/image-processor.js';
 import { generateOutputFilename } from '../../../lib/output-sizes.js';
 import { hasCredits, canUsePng, getRetentionDays } from '../../../lib/credits.js';
 
@@ -82,6 +82,25 @@ export async function POST(request) {
 
     // Release the original image buffer — all crop regions are extracted
     originalBuffer = null;
+
+    // Phase 1.5: AI upscale any crop buffers that need it (once per ratio group)
+    for (const config of cropConfigs) {
+      const { ratioKey, sizes } = config;
+      if (!sizes.some((s) => s.useUpscaling)) continue;
+
+      const cropResult = cropResults.get(ratioKey);
+      if (!cropResult) continue;
+
+      try {
+        cropResult.croppedBuffer = await upscaleCropWithAI(cropResult.croppedBuffer);
+      } catch (error) {
+        console.error(`[upscale] AI upscaling failed for ratio ${ratioKey}:`, error.message);
+        cropResults.delete(ratioKey);
+        for (const size of sizes) {
+          outputs.push({ ratioKey, sizeLabel: size.label, success: false, uploaded: false, error: 'AI upscaling failed. Please try again.' });
+        }
+      }
+    }
 
     // Phase 2: Resize each crop → upload → release
     for (const config of cropConfigs) {
