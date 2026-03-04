@@ -124,7 +124,22 @@ function ImageCard({
     }
   }, [isNew]);
 
+  const isExpired = !!image.expired_at;
   const outputCount = image.outputs?.length || 0;
+
+  // Expiry countdown for active images that have an expires_at
+  let expiryLabel = null;
+  if (!isExpired && image.expires_at) {
+    const daysLeft = Math.ceil(
+      (new Date(image.expires_at) - Date.now()) / (1000 * 60 * 60 * 24)
+    );
+    if (daysLeft <= 2) {
+      expiryLabel = `Expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`;
+    } else if (daysLeft <= 7) {
+      expiryLabel = `Expires in ${daysLeft} days`;
+    }
+  }
+
   const statusLabel =
     image.status === 'processed'
       ? `${outputCount} file${outputCount !== 1 ? 's' : ''}`
@@ -167,6 +182,8 @@ function ImageCard({
       className={`bg-white rounded-lg border overflow-hidden transition-all ${
         isNew
           ? 'border-blue-400 ring-2 ring-blue-100 shadow-md'
+          : isExpired
+          ? 'border-gray-200 opacity-70'
           : 'border-gray-200'
       }`}
     >
@@ -196,8 +213,11 @@ function ImageCard({
             >
               {image.original_filename}
             </p>
-            {isNew && (
-              <span className="badge-new">New</span>
+            {isNew && <span className="badge-new">New</span>}
+            {isExpired && (
+              <span className="text-[10px] font-medium bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">
+                Expired
+              </span>
             )}
           </div>
           <div className="flex items-center gap-2 mt-1">
@@ -211,25 +231,42 @@ function ImageCard({
               {new Date(image.created_at).toLocaleDateString()}
             </span>
           </div>
-          {image.status === 'processed' && outputCount > 0 && (
+          {!isExpired && image.status === 'processed' && outputCount > 0 && (
             <p className="text-xs text-green-700 mt-1">
               {statusLabel} &middot; {ratioCount} ratio{ratioCount !== 1 ? 's' : ''}
             </p>
           )}
-          {image.status !== 'processed' && (
+          {!isExpired && image.status !== 'processed' && (
             <p className="text-xs text-yellow-700 mt-1 capitalize">{statusLabel}</p>
+          )}
+          {isExpired && (
+            <p className="text-xs text-gray-400 mt-1">Files deleted &mdash; upload again to re-create</p>
+          )}
+          {!isExpired && expiryLabel && (
+            <p className={`text-xs mt-1 ${expiryLabel.includes('1 day') || expiryLabel.includes('2 day') ? 'text-orange-600' : 'text-gray-400'}`}>
+              {expiryLabel}
+            </p>
           )}
         </div>
 
         {/* Action buttons */}
         <div className="shrink-0 flex items-center gap-2">
-          <a
-            href={`/crop?imageId=${image.id}`}
-            className="text-xs font-medium bg-blue-50 text-blue-700 rounded-lg px-3 py-1.5 hover:bg-blue-100 transition-colors"
-          >
-            {image.status === 'processed' ? 'Re-process' : 'Process'}
-          </a>
-          {image.status === 'processed' && outputCount > 0 && (
+          {isExpired ? (
+            <a
+              href="/"
+              className="text-xs font-medium bg-blue-50 text-blue-700 rounded-lg px-3 py-1.5 hover:bg-blue-100 transition-colors"
+            >
+              Upload New
+            </a>
+          ) : (
+            <a
+              href={`/crop?imageId=${image.id}`}
+              className="text-xs font-medium bg-blue-50 text-blue-700 rounded-lg px-3 py-1.5 hover:bg-blue-100 transition-colors"
+            >
+              {image.status === 'processed' ? 'Re-process' : 'Process'}
+            </a>
+          )}
+          {!isExpired && image.status === 'processed' && outputCount > 0 && (
             <a
               href={`/api/download-zip/${image.id}`}
               className="text-xs font-medium bg-green-50 text-green-700 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors"
@@ -279,7 +316,7 @@ function ImageCard({
       )}
 
       {/* Outputs section */}
-      {outputCount > 0 && !showConfirm && (
+      {!isExpired && outputCount > 0 && !showConfirm && (
         <div className="border-t border-gray-100">
           {/* Toggle bar */}
           <button

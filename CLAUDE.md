@@ -14,21 +14,27 @@ SaaS for Etsy digital printable sellers. Upload artwork → select print ratios 
 ```bash
 npm run dev    # http://localhost:3000
 npm run build  # NODE_OPTIONS memory flag included
-npm start      # custom server with --expose-gc
+npm start      # next start with --expose-gc (for manual GC in process route)
 npm run lint
 ```
-Railway Pro. Build: `NODE_OPTIONS='--max-old-space-size=1536'`.
+**Hosting:** Hostinger Cloud Web Hosting (Node.js runtime, managed process + reverse proxy).
+**Production domain:** `https://allgoodweb.com`
+**Build memory:** `NODE_OPTIONS='--max-old-space-size=3072'` (set in package.json)
+**Stripe:** Currently sandbox (test) keys — publishable + secret keys must be swapped for live keys before launch.
+**Cleanup cron:** hPanel Cron Jobs, runs daily — `POST https://allgoodweb.com/api/cleanup` with `Authorization: Bearer <CRON_KEY>`
 
 ## Critical Gotchas
 - `MAX_UPLOAD_SIZE_MB=50` in `.env.local` is overridden in the upload route — actual limit is **400MB**
 - `sharp` must stay in `serverExternalPackages` in `next.config.mjs` or SSR breaks
 - Server action body size limit is 50MB in `next.config.mjs` (separate from upload limit)
-- Production server binds to `0.0.0.0` via `server.js` for Railway compatibility
-- Do not increase Sharp concurrency — Railway Pro memory constraint
+- `--expose-gc` flag in start script enables `global.gc()` in the process route — do not remove it
+- Do not increase Sharp concurrency — memory constraint
 - Stripe webhook secret changes on every `stripe listen` restart — update `.env.local` and restart dev server
 - Never call `setSession()` unnecessarily — triggers internal Supabase auth refreshes
 - Crop box x/y can be **negative** (extends beyond image bounds) — `image-processor.js` handles via intersection + padding
 - Never auto-sync all users with Stripe on the admin user list — adds 50+ seconds to page load
+- PNG output gated to Professional/Enterprise plans (`canUsePng()` in `lib/credits.js`)
+- File expiry: set on processing, cleaned by `/api/cleanup` cron — thumbnails are never deleted
 
 ## Conventions
 - Path alias: `@/*` → `./` (jsconfig.json)

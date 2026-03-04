@@ -2,7 +2,7 @@ import { createServerClient } from '../../../lib/supabase/server.js';
 import { createServiceClient } from '../../../lib/supabase/service.js';
 import { extractCrop, resizeToTarget } from '../../../lib/image-processor.js';
 import { generateOutputFilename } from '../../../lib/output-sizes.js';
-import { hasCredits } from '../../../lib/credits.js';
+import { hasCredits, canUsePng, getRetentionDays } from '../../../lib/credits.js';
 
 export async function POST(request) {
   try {
@@ -25,6 +25,16 @@ export async function POST(request) {
 
     // Parse request body
     const { imageId, cropConfigs } = await request.json();
+
+    // Check PNG permission before doing any work
+    const hasPngRequest = Array.isArray(cropConfigs) &&
+      cropConfigs.some((c) => c.backgroundColor === 'transparent');
+    if (hasPngRequest && !canUsePng(subscription)) {
+      return Response.json({
+        error: 'Transparent PNG output requires a Professional or Enterprise plan.',
+        upgradeRequired: true,
+      }, { status: 403 });
+    }
 
     if (!imageId || !cropConfigs || !Array.isArray(cropConfigs) || cropConfigs.length === 0) {
       return Response.json({ error: 'Invalid request. imageId and cropConfigs required.' }, { status: 400 });
@@ -197,10 +207,13 @@ export async function POST(request) {
         })
         .eq('user_id', user.id);
 
-      // Update image status
+      // Update image status + set expiry based on plan
+      const retentionDays = getRetentionDays(subscription);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + retentionDays);
       await serviceClient
         .from('images')
-        .update({ status: 'processed' })
+        .update({ status: 'processed', expires_at: expiresAt.toISOString() })
         .eq('id', imageId);
     }
 

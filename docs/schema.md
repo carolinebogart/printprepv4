@@ -51,20 +51,31 @@ CREATE TABLE public.images (
     id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id uuid REFERENCES auth.users(id),
     original_filename text NOT NULL,
-    original_path text NOT NULL,
+    storage_path text NOT NULL,
+    thumbnail_path text,       -- small JPEG for history view; persists after expiry
     width integer NOT NULL,
     height integer NOT NULL,
     aspect_ratio numeric NOT NULL,
-    processing_status text DEFAULT 'pending',
-    uploaded_at timestamptz DEFAULT now(),
+    format text,
+    orientation text,
+    file_size integer,
+    status text DEFAULT 'pending',
+    expires_at timestamptz,    -- when output files + original will be deleted (set on processing)
+    expired_at timestamptz,    -- set by cleanup job once files are deleted; null = still live
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
 );
+
+CREATE INDEX idx_images_cleanup ON images (expires_at) WHERE expired_at IS NULL;
 ```
 
-Orientation is derived at runtime: `width > height ? 'landscape' : 'portrait'`
+Orientation is stored at upload time: `width > height ? 'landscape' : 'portrait'`
 
-**`processing_status` values:** `pending` | `processing` | `completed` | `failed`
+**`status` values:** `pending` | `processing` | `processed` | `failed`
+
+**File lifetime:** `expires_at` is set when an image is first successfully processed, based on the user's plan tier (7 / 30 / 90 days). The cleanup job (`POST /api/cleanup`) runs daily, deletes expired files, and sets `expired_at`. `thumbnail_path` is never deleted — it powers the history view permanently.
+
+**Migration:** `supabase/migrations/20260303000000_file_lifetime.sql`
 
 ---
 

@@ -28,53 +28,81 @@ export default async function HistoryPage() {
     );
   }
 
-  // Batch-fetch all outputs for these images (avoid N+1)
-  const imageIds = images.map((img) => img.id);
-  const { data: allOutputs } = await supabase
-    .from('processed_outputs')
-    .select('*')
-    .in('image_id', imageIds)
-    .order('created_at', { ascending: true });
+  const activeImages = images.filter((img) => !img.expired_at);
+  const expiredImages = images.filter((img) => img.expired_at);
+
+  // Batch-fetch outputs only for active images (expired ones have no live files)
+  const activeImageIds = activeImages.map((img) => img.id);
+  let allOutputs = [];
+  if (activeImageIds.length > 0) {
+    const { data: outputs } = await supabase
+      .from('processed_outputs')
+      .select('*')
+      .in('image_id', activeImageIds)
+      .order('created_at', { ascending: true });
+    allOutputs = outputs || [];
+  }
 
   // Group outputs by image_id
   const outputsByImage = {};
-  (allOutputs || []).forEach((out) => {
+  allOutputs.forEach((out) => {
     if (!outputsByImage[out.image_id]) outputsByImage[out.image_id] = [];
     outputsByImage[out.image_id].push(out);
   });
 
-  // Generate signed URLs for originals
-  const signedOriginals = await supabase.storage
-    .from('printprep-images')
-    .createSignedUrls(
-      images.map((img) => img.storage_path),
-      3600
-    );
+  // Signed URLs for active image originals (1h expiry — only for preview in the card)
   const originalUrlMap = {};
-  (signedOriginals.data || []).forEach((item, i) => {
-    if (item.signedUrl) originalUrlMap[images[i].id] = item.signedUrl;
-  });
+  if (activeImages.length > 0) {
+    const signedOriginals = await supabase.storage
+      .from('printprep-images')
+      .createSignedUrls(
+        activeImages.map((img) => img.storage_path).filter(Boolean),
+        3600
+      );
+    (signedOriginals.data || []).forEach((item, i) => {
+      if (item.signedUrl) originalUrlMap[activeImages[i].id] = item.signedUrl;
+    });
+  }
 
-  // Generate signed URLs for all outputs
-  const allOutputPaths = (allOutputs || []).map((out) => out.storage_path);
+  // Signed URLs for thumbnails of expired images (thumbnails persist past expiry)
+  const thumbnailUrlMap = {};
+  const expiredWithThumb = expiredImages.filter((img) => img.thumbnail_path);
+  if (expiredWithThumb.length > 0) {
+    const signedThumbs = await supabase.storage
+      .from('printprep-images')
+      .createSignedUrls(
+        expiredWithThumb.map((img) => img.thumbnail_path),
+        3600
+      );
+    (signedThumbs.data || []).forEach((item, i) => {
+      if (item.signedUrl) thumbnailUrlMap[expiredWithThumb[i].id] = item.signedUrl;
+    });
+  }
+
+  // Signed URLs for all active outputs
+  const allOutputPaths = allOutputs.map((out) => out.storage_path);
   let outputUrlMap = {};
   if (allOutputPaths.length > 0) {
     const signedOutputs = await supabase.storage
       .from('printprep-images')
       .createSignedUrls(allOutputPaths, 3600);
     (signedOutputs.data || []).forEach((item, i) => {
-      if (item.signedUrl) outputUrlMap[(allOutputs)[i].id] = item.signedUrl;
+      if (item.signedUrl) outputUrlMap[allOutputs[i].id] = item.signedUrl;
     });
   }
 
-  // Merge
+  // Merge everything
   const imagesWithOutputs = images.map((img) => ({
     ...img,
-    previewUrl: originalUrlMap[img.id] || null,
-    outputs: (outputsByImage[img.id] || []).map((out) => ({
-      ...out,
-      previewUrl: outputUrlMap[out.id] || null,
-    })),
+    previewUrl: img.expired_at
+      ? (thumbnailUrlMap[img.id] || null)
+      : (originalUrlMap[img.id] || null),
+    outputs: img.expired_at
+      ? [] // no live files
+      : (outputsByImage[img.id] || []).map((out) => ({
+          ...out,
+          previewUrl: outputUrlMap[out.id] || null,
+        })),
   }));
 
   return (

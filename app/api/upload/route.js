@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getImageInfo } from '@/lib/image-processor';
 import { getRatiosForOrientation } from '@/lib/output-sizes';
 import { NextResponse } from 'next/server';
+import sharp from 'sharp';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -102,12 +103,32 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 });
     }
 
+    // Generate small thumbnail (persists after file expiry for history view)
+    let thumbnailPath = null;
+    try {
+      const thumbBuffer = await sharp(buffer)
+        .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      thumbnailPath = `${user.id}/thumbnails/${imageId}.jpg`;
+      const { error: thumbErr } = await supabase.storage
+        .from('printprep-images')
+        .upload(thumbnailPath, thumbBuffer, { contentType: 'image/jpeg', upsert: false });
+      if (thumbErr) {
+        console.warn('Thumbnail upload failed:', thumbErr.message);
+        thumbnailPath = null;
+      }
+    } catch (thumbErr) {
+      console.warn('Thumbnail generation failed:', thumbErr?.message);
+    }
+
     // Create image record
     const { error: dbError } = await supabase.from('images').insert({
       id: imageId,
       user_id: user.id,
       original_filename: file.name,
       storage_path: storagePath,
+      thumbnail_path: thumbnailPath,
       width: metadata.width,
       height: metadata.height,
       aspect_ratio: metadata.aspectRatio,
