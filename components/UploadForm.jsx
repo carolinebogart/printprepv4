@@ -14,7 +14,7 @@ const RES_TIERS = [
   { minShort: 2400, label: 'Good resolution — supports medium prints up to ~16×20" at 150+ DPI', color: 'green' },
   { minShort: 1800, label: 'Fair — supports sizes up to ~8×12" at 150+ DPI', color: 'yellow' },
   { minShort: 1200, label: 'Limited — only small prints (4×6", 4×5")', color: 'orange' },
-  { minShort: 0, label: 'Very low — may not produce print-quality output at any size', color: 'red' },
+  { minShort: 0, label: 'Very low — output will be below 300 DPI at all sizes', color: 'red' },
 ];
 
 function getResolutionTier(width, height) {
@@ -38,158 +38,97 @@ function getCropSourceDims(imgW, imgH, targetRatio) {
   return { w: imgW, h: imgH };
 }
 
+function dpiToCol(dpi) {
+  if (dpi >= 300) return 'excellent';
+  if (dpi >= 200) return 'good';
+  if (dpi >= 150) return 'fair';
+  return 'unavailable';
+}
+
 function computeQualityData(imgW, imgH) {
   const ratios = imgW >= imgH ? LANDSCAPE_RATIOS : PORTRAIT_RATIOS;
   return Object.entries(ratios).map(([key, def]) => {
     const crop = getCropSourceDims(imgW, imgH, def.ratio);
     const sizes = def.sizes.map((s) => {
-      const native = getQualityBadge(crop.w, crop.h, s.width, s.height);
-      // Compute upscale estimate for every size that isn't already Excellent
-      let upscale = null;
-      if (native.dpi >= 35 && native.dpi < 300) {
-        const achieved = Math.min(Math.round(native.dpi * 4), 300);
-        upscale = { dpi: achieved, qualityLabel: dpiQualityLabel(achieved) };
-      }
-      return { label: s.label, native, upscale };
+      const badge = getQualityBadge(crop.w, crop.h, s.width, s.height);
+      const nativeDpi = badge.dpi;
+      // Native row: anything below Fair (< 150 DPI) goes in unavailable
+      const nativeCol = (badge.tier === 'upscale' || badge.tier === 'disabled') ? 'unavailable' : badge.tier;
+      // Upscale row: apply 4× Real-ESRGAN estimate; already-excellent stays excellent
+      const upscaleDpi = badge.tier === 'excellent' ? nativeDpi : Math.min(Math.round(nativeDpi * 4), 300);
+      const upscaleCol = badge.tier === 'excellent' ? 'excellent' : dpiToCol(upscaleDpi);
+      return { label: s.label, nativeDpi, nativeCol, upscaleDpi, upscaleCol };
     });
-
-    // Recommendation: which sizes achieve Good or Excellent (native or via upscale)
-    const nativeGoodPlus = sizes.filter((s) => s.native.tier === 'excellent' || s.native.tier === 'good');
-    const upscaleGoodPlus = sizes.filter(
-      (s) => s.upscale &&
-        (s.upscale.qualityLabel === 'Excellent' || s.upscale.qualityLabel === 'Good') &&
-        s.native.tier !== 'excellent' && s.native.tier !== 'good',
-    );
-    let recommendation;
-    if (nativeGoodPlus.length === 0 && upscaleGoodPlus.length === 0) {
-      recommendation = 'No Good or Excellent output achievable for this ratio.';
-    } else {
-      const parts = [];
-      if (nativeGoodPlus.length) parts.push(`Native: ${nativeGoodPlus.map((s) => s.label + '"').join(', ')}`);
-      if (upscaleGoodPlus.length) parts.push(`Upscale: ${upscaleGoodPlus.map((s) => s.label + '"').join(', ')}`);
-      recommendation = parts.join(' · ');
-    }
-
-    return { key, name: def.name, sizes, recommendation };
+    return { key, name: def.name, sizes };
   });
 }
 
-function dpiQualityLabel(dpi) {
-  if (dpi >= 300) return 'Excellent';
-  if (dpi >= 200) return 'Good';
-  if (dpi >= 150) return 'Fair';
-  return 'Low';
-}
-
-// Column definitions — left to right: upscale first, unavailable second, then native quality worst→best, recommendation last
-const TABLE_COLS = [
-  {
-    id: 'upscale',
-    label: 'Real-ESRGAN ✦',
-    subLabel: 'with upscale',
-    thClass: 'text-blue-700 bg-blue-50 border-blue-200',
-  },
-  {
-    id: 'unavailable',
-    label: 'Unavailable',
-    subLabel: 'Low Quality',
-    thClass: 'text-gray-400 bg-gray-50 border-gray-200',
-  },
-  {
-    id: 'fair',
-    label: 'Fair',
-    subLabel: '150–199 DPI',
-    thClass: 'text-orange-600 bg-orange-50 border-orange-200',
-  },
-  {
-    id: 'good',
-    label: 'Good',
-    subLabel: '200–299 DPI',
-    thClass: 'text-yellow-700 bg-yellow-50 border-yellow-200',
-  },
-  {
-    id: 'excellent',
-    label: 'Excellent',
-    subLabel: '300+ DPI',
-    thClass: 'text-green-700 bg-green-50 border-green-200',
-  },
-  {
-    id: 'recommendation',
-    label: 'Recommendation',
-    subLabel: 'Good or better',
-    thClass: 'text-gray-700 bg-gray-100 border-gray-300',
-  },
+// Quality columns — unavailable on left, excellent on right
+const QUALITY_COLS = [
+  { id: 'unavailable', label: 'Unavailable', subLabel: 'Low Quality',  thClass: 'text-gray-400 bg-gray-50 border-gray-200'    },
+  { id: 'fair',        label: 'Fair',        subLabel: '150–199 DPI',  thClass: 'text-orange-600 bg-orange-50 border-orange-200' },
+  { id: 'good',        label: 'Good',        subLabel: '200–299 DPI',  thClass: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
+  { id: 'excellent',   label: 'Excellent',   subLabel: '300+ DPI',     thClass: 'text-green-700 bg-green-50 border-green-200'  },
 ];
 
-function QualityPreviewTable({ qualityData }) {
-  const hasUpscale = qualityData.some((r) => r.sizes.some((s) => s.upscale));
+function SizeCell({ sizes, dpiKey }) {
+  if (sizes.length === 0) return <span className="text-gray-300">—</span>;
+  return sizes.map((s) => (
+    <div key={s.label}>
+      {s.label}&quot; <span className="text-gray-400">— {s[dpiKey]} DPI</span>
+    </div>
+  ));
+}
 
+function QualityPreviewTable({ qualityData }) {
   return (
     <div className="space-y-3">
       <p className="text-xs font-medium text-gray-500 uppercase tracking-wide px-1">Expected output quality by ratio</p>
-      {qualityData.map((ratio) => {
-        const upscaleSizes   = ratio.sizes.filter((s) => s.upscale);
-        const unavailSizes   = ratio.sizes.filter((s) => s.native.tier === 'disabled');
-        const fairSizes      = ratio.sizes.filter((s) => s.native.tier === 'fair');
-        const goodSizes      = ratio.sizes.filter((s) => s.native.tier === 'good');
-        const excellentSizes = ratio.sizes.filter((s) => s.native.tier === 'excellent');
-
-        const cellsByCol = {
-          upscale: upscaleSizes.map((s) => (
-            <div key={s.label}>
-              {s.label}&quot; <span className="text-gray-400">→ ~{s.upscale.dpi} DPI ({s.upscale.qualityLabel})</span>
-            </div>
-          )),
-          unavailable: unavailSizes.map((s) => (
-            <div key={s.label}>
-              {s.label}&quot; <span className="text-gray-400">— {s.native.dpi} DPI</span>
-            </div>
-          )),
-          fair:      fairSizes.map((s)      => <div key={s.label}>{s.label}&quot; <span className="text-gray-400">— {s.native.dpi} DPI</span></div>),
-          good:      goodSizes.map((s)      => <div key={s.label}>{s.label}&quot; <span className="text-gray-400">— {s.native.dpi} DPI</span></div>),
-          excellent: excellentSizes.map((s) => <div key={s.label}>{s.label}&quot; <span className="text-gray-400">— {s.native.dpi} DPI</span></div>),
-          recommendation: [<span key="rec" className="text-gray-600 leading-relaxed">{ratio.recommendation}</span>],
-        };
-
-        return (
-          <div key={ratio.key} className="rounded-lg border border-gray-200 overflow-hidden">
-            <div className="bg-gray-50 border-b border-gray-200 px-3 py-1.5">
-              <span className="text-xs font-semibold text-gray-700">{ratio.name}</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr>
-                    {TABLE_COLS.map((col) => (
-                      <th key={col.id} className={`px-2 py-1.5 text-left font-medium border-b border-gray-200 whitespace-nowrap ${col.thClass}`}>
-                        {col.label}
-                        {col.subLabel && <span className="block font-normal opacity-75">{col.subLabel}</span>}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    {TABLE_COLS.map((col) => {
-                      const cells = cellsByCol[col.id];
-                      return (
-                        <td key={col.id} className="px-2 py-2 align-top text-gray-700">
-                          {cells.length > 0 ? cells : <span className="text-gray-300">—</span>}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+      {qualityData.map((ratio) => (
+        <div key={ratio.key} className="rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-gray-50 border-b border-gray-200 px-3 py-1.5">
+            <span className="text-xs font-semibold text-gray-700">{ratio.name}</span>
           </div>
-        );
-      })}
-      {hasUpscale && (
-        <p className="text-xs text-gray-400 px-1">
-          ✦ Upscaling uses Real-ESRGAN (AI super-resolution, 4× scale). Estimated post-upscale DPI shown. Results may vary based on source image quality.
-        </p>
-      )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr>
+                  <th className="px-2 py-1.5 text-left font-medium border-b border-gray-200 bg-white text-gray-500 whitespace-nowrap w-24" />
+                  {QUALITY_COLS.map((col) => (
+                    <th key={col.id} className={`px-2 py-1.5 text-left font-medium border-b border-gray-200 whitespace-nowrap ${col.thClass}`}>
+                      {col.label}
+                      <span className="block font-normal opacity-75">{col.subLabel}</span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {/* Row 1: native quality */}
+                <tr className="border-b border-gray-100">
+                  <td className="px-2 py-2 font-medium text-gray-500 whitespace-nowrap">No upscale</td>
+                  {QUALITY_COLS.map((col) => (
+                    <td key={col.id} className="px-2 py-2 align-top text-gray-700">
+                      <SizeCell sizes={ratio.sizes.filter((s) => s.nativeCol === col.id)} dpiKey="nativeDpi" />
+                    </td>
+                  ))}
+                </tr>
+                {/* Row 2: with Real-ESRGAN upscaling */}
+                <tr>
+                  <td className="px-2 py-2 font-medium text-blue-600 whitespace-nowrap">Real-ESRGAN ✦</td>
+                  {QUALITY_COLS.map((col) => (
+                    <td key={col.id} className="px-2 py-2 align-top text-gray-700">
+                      <SizeCell sizes={ratio.sizes.filter((s) => s.upscaleCol === col.id)} dpiKey="upscaleDpi" />
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+      <p className="text-xs text-gray-400 px-1">
+        ✦ Real-ESRGAN: AI super-resolution at 4× scale. Estimated post-upscale DPI shown — actual results vary by image content.
+      </p>
     </div>
   );
 }
