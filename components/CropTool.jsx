@@ -48,6 +48,7 @@ export default function CropTool({
   // Processing state
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
+  const [successData, setSuccessData] = useState(null); // { imageId, expiresAt, count }
 
   // Resolution calculator modal
   const [calcOpen, setCalcOpen] = useState(false);
@@ -418,7 +419,12 @@ export default function CropTool({
 
       // Signal the header credits badge to refresh
       window.dispatchEvent(new Event('credits-updated'));
-      router.push(`/history?new=${imageId}`);
+      setSuccessData({
+        imageId,
+        expiresAt: data.expiresAt,
+        count: data.successfulOutputs,
+      });
+      setProcessing(false);
     } catch {
       setError('Processing failed. Please try again.');
       setProcessing(false);
@@ -588,16 +594,45 @@ export default function CropTool({
           </label>
         </div>
 
-        {/* Generate button */}
+        {/* Generate button / success panel */}
         <div className="mt-6 pt-4 border-t border-gray-200">
-          {error && <div className="flash-error text-xs mb-2">{error}</div>}
-          <button
-            onClick={handleGenerate}
-            disabled={totalSelectedSizes === 0 || processing}
-            className="btn-primary w-full py-2.5"
-          >
-            {processing ? 'Processing...' : totalSelectedSizes === 0 ? 'Select sizes to generate' : `Generate ${totalSelectedSizes} size${totalSelectedSizes !== 1 ? 's' : ''}`}
-          </button>
+          {successData ? (
+            <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-center">
+              <p className="text-sm font-semibold text-green-800 mb-1">
+                {successData.count} file{successData.count !== 1 ? 's' : ''} ready
+              </p>
+              {successData.expiresAt && (
+                <p className="text-xs text-amber-700 mb-3">
+                  Download by{' '}
+                  <strong>
+                    {new Date(successData.expiresAt).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </strong>{' '}
+                  — files are deleted after that.
+                </p>
+              )}
+              <button
+                onClick={() => router.push(`/history?new=${successData.imageId}`)}
+                className="btn-primary w-full py-2"
+              >
+                View &amp; Download
+              </button>
+            </div>
+          ) : (
+            <>
+              {error && <div className="flash-error text-xs mb-2">{error}</div>}
+              <button
+                onClick={handleGenerate}
+                disabled={totalSelectedSizes === 0 || processing}
+                className="btn-primary w-full py-2.5"
+              >
+                {processing ? 'Processing...' : totalSelectedSizes === 0 ? 'Select sizes to generate' : `Generate ${totalSelectedSizes} size${totalSelectedSizes !== 1 ? 's' : ''}`}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

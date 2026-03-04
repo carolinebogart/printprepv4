@@ -129,14 +129,13 @@ function ImageCard({
 
   // Expiry countdown for active images that have an expires_at
   let expiryLabel = null;
+  let expiryDaysLeft = 0;
   if (!isExpired && image.expires_at) {
-    const daysLeft = Math.ceil(
+    expiryDaysLeft = Math.ceil(
       (new Date(image.expires_at) - Date.now()) / (1000 * 60 * 60 * 24)
     );
-    if (daysLeft <= 2) {
-      expiryLabel = `Expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`;
-    } else if (daysLeft <= 7) {
-      expiryLabel = `Expires in ${daysLeft} days`;
+    if (expiryDaysLeft <= 7) {
+      expiryLabel = `Expires in ${expiryDaysLeft} day${expiryDaysLeft !== 1 ? 's' : ''}`;
     }
   }
 
@@ -243,7 +242,7 @@ function ImageCard({
             <p className="text-xs text-gray-400 mt-1">Files deleted &mdash; upload again to re-create</p>
           )}
           {!isExpired && expiryLabel && (
-            <p className={`text-xs mt-1 ${expiryLabel.includes('1 day') || expiryLabel.includes('2 day') ? 'text-orange-600' : 'text-gray-400'}`}>
+            <p className={`text-xs mt-1 font-medium ${expiryDaysLeft <= 2 ? 'text-orange-600' : 'text-amber-600'}`}>
               {expiryLabel}
             </p>
           )}

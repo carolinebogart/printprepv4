@@ -199,6 +199,7 @@ export async function POST(request) {
     const successCount = outputs.filter((o) => o.success && o.uploaded).length;
 
     // Deduct 1 credit (1 credit per image, regardless of output count)
+    let expiresAt = null;
     if (successCount > 0) {
       await serviceClient
         .from('subscriptions')
@@ -209,7 +210,7 @@ export async function POST(request) {
 
       // Update image status + set expiry based on plan
       const retentionDays = getRetentionDays(subscription);
-      const expiresAt = new Date();
+      expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + retentionDays);
       await serviceClient
         .from('images')
@@ -220,6 +221,7 @@ export async function POST(request) {
     return Response.json({
       success: true,
       imageId,
+      expiresAt: expiresAt?.toISOString() ?? null,
       totalOutputs: outputs.length,
       successfulOutputs: successCount,
       outputs,
