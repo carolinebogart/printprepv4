@@ -58,59 +58,61 @@ const TIER_COLS = [
   { tier: 'disabled',  label: 'Unavailable', classes: 'text-gray-400 bg-gray-50 border-gray-200'    },
 ];
 
+function dpiQualityLabel(dpi) {
+  if (dpi >= 300) return 'Excellent';
+  if (dpi >= 200) return 'Good';
+  if (dpi >= 150) return 'Fair';
+  return 'Low';
+}
+
 function QualityPreviewTable({ qualityData }) {
   const hasUpscale = qualityData.some((r) => r.sizes.some((s) => s.badge.tier === 'upscale'));
 
   return (
     <div className="space-y-3">
       <p className="text-xs font-medium text-gray-500 uppercase tracking-wide px-1">Expected output quality by ratio</p>
-      {qualityData.map((ratio) => {
-        const visibleCols = TIER_COLS.filter((col) => ratio.sizes.some((s) => s.badge.tier === col.tier));
-        if (visibleCols.length === 0) return null;
-
-        return (
-          <div key={ratio.key} className="rounded-lg border border-gray-200 overflow-hidden">
-            <div className="bg-gray-50 border-b border-gray-200 px-3 py-1.5">
-              <span className="text-xs font-semibold text-gray-700">{ratio.name}</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr>
-                    {visibleCols.map((col) => (
-                      <th key={col.tier} className={`px-2 py-1.5 text-left font-medium border-b border-gray-200 ${col.classes}`}>
-                        {col.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    {visibleCols.map((col) => {
-                      const sizes = ratio.sizes.filter((s) => s.badge.tier === col.tier);
-                      return (
-                        <td key={col.tier} className="px-2 py-2 align-top text-gray-700">
-                          {sizes.length > 0
-                            ? sizes.map((s) => (
-                                <div key={s.label}>
-                                  {s.label}&quot;
-                                  {s.badge.tier === 'upscale' && (
-                                    <span className="text-gray-400 ml-1">~{s.badge.estimatedDpi} DPI</span>
-                                  )}
-                                </div>
-                              ))
-                            : <span className="text-gray-300">—</span>
-                          }
-                        </td>
-                      );
-                    })}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+      {qualityData.map((ratio) => (
+        <div key={ratio.key} className="rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-gray-50 border-b border-gray-200 px-3 py-1.5">
+            <span className="text-xs font-semibold text-gray-700">{ratio.name}</span>
           </div>
-        );
-      })}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr>
+                  {TIER_COLS.map((col) => (
+                    <th key={col.tier} className={`px-2 py-1.5 text-left font-medium border-b border-gray-200 ${col.classes}`}>
+                      {col.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {TIER_COLS.map((col) => {
+                    const sizes = ratio.sizes.filter((s) => s.badge.tier === col.tier);
+                    return (
+                      <td key={col.tier} className="px-2 py-2 align-top text-gray-700">
+                        {sizes.length > 0
+                          ? sizes.map((s) => (
+                              <div key={s.label}>
+                                {s.label}&quot;
+                                {s.badge.tier === 'upscale' && (
+                                  <span className="text-gray-400 ml-1">→ ~{s.badge.estimatedDpi} DPI ({dpiQualityLabel(s.badge.estimatedDpi)})</span>
+                                )}
+                              </div>
+                            ))
+                          : <span className="text-gray-300">—</span>
+                        }
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
       {hasUpscale && (
         <p className="text-xs text-gray-400 px-1">
           ✦ AI Upscale: we will attempt to enhance the image using AI before processing. Estimated result shown.
