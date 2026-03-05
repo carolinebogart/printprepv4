@@ -228,23 +228,31 @@ export default function CropTool({
     }));
   };
 
-  // Per-ratio view toggle: changes which sizes are shown for that ratio (no selection changes)
+  // Per-ratio view toggle: changes view mode and clears individual size locks for that ratio
   const handleRatioViewToggle = (ratioKey, mode) => {
     if (cropStates[ratioKey].upscaleMode === mode) return; // no-op if already active
     setCropStates((prev) => ({
       ...prev,
-      [ratioKey]: { ...prev[ratioKey], upscaleMode: mode },
+      [ratioKey]: {
+        ...prev[ratioKey],
+        upscaleMode: mode,
+        sizes: prev[ratioKey].sizes.map((s) => ({ ...s, useUpscaling: false })),
+      },
     }));
   };
 
-  // Global view toggle: sets masterView and resets all per-ratio overrides (no selection changes)
+  // Global view toggle: sets masterView, resets all per-ratio overrides, and clears individual size locks
   const handleMasterView = (mode) => {
     if (masterView === mode) return; // no-op if already active
     setMasterView(mode);
     setCropStates((prev) => {
       const next = {};
       for (const key of Object.keys(prev)) {
-        next[key] = { ...prev[key], upscaleMode: null };
+        next[key] = {
+          ...prev[key],
+          upscaleMode: null,
+          sizes: prev[key].sizes.map((s) => ({ ...s, useUpscaling: false })),
+        };
       }
       return next;
     });
