@@ -248,7 +248,7 @@ function ImageCard({
             <p className="text-xs text-gray-400 mt-1">Files deleted &mdash; upload again to re-create</p>
           )}
           {!isExpired && expiryLabel && (
-            <p className={`text-xs mt-1 font-medium ${expiryDaysLeft <= 2 ? 'text-orange-600' : expiryDaysLeft <= 7 ? 'text-amber-600' : 'text-gray-400'}`}>
+            <p className={`text-[11px] mt-1 font-medium ${expiryDaysLeft <= 2 ? 'text-orange-600' : expiryDaysLeft <= 7 ? 'text-amber-600' : 'text-gray-400'}`}>
               {expiryLabel}
             </p>
           )}
@@ -438,20 +438,36 @@ function ImageCard({
 
 /* ─── Output Tile ────────────────────────────────────────── */
 
+// Parse dimensions from the output filename which encodes everything:
+// e.g. "3x4-8x10in-2400x3000px-203x254mm-1234567890.jpg"
+// or   "a4-8.27x11.69in-2481x3507px-210x297mm-1234567890.jpg"
+function parseFilnameDimensions(filename) {
+  if (!filename) return {};
+  const inMatch = filename.match(/([\d.]+)x([\d.]+)in/);
+  const pxMatch = filename.match(/([\d.]+)x([\d.]+)px/);
+  const mmMatch = filename.match(/([\d.]+)x([\d.]+)mm/);
+  return {
+    wIn: inMatch ? parseFloat(inMatch[1]) : null,
+    hIn: inMatch ? parseFloat(inMatch[2]) : null,
+    wPx: pxMatch ? parseInt(pxMatch[1]) : null,
+    hPx: pxMatch ? parseInt(pxMatch[2]) : null,
+    wMm: mmMatch ? parseInt(mmMatch[1]) : null,
+    hMm: mmMatch ? parseInt(mmMatch[2]) : null,
+  };
+}
+
 function OutputTile({ output, isNew, expiresAt, isExpired }) {
   const ext = output.format === 'png' ? 'PNG' : 'JPG';
   const dpi = output.dpi || 300;
 
-  // Derive pixel dimensions from size_label (e.g. "8x10") and dpi
-  let pxLabel = null;
-  if (output.size_label) {
-    const match = output.size_label.match(/^([\d.]+)x([\d.]+)$/i);
-    if (match) {
-      const wpx = Math.round(parseFloat(match[1]) * dpi);
-      const hpx = Math.round(parseFloat(match[2]) * dpi);
-      pxLabel = `${wpx}×${hpx}px`;
-    }
-  }
+  // Parse all dimensions from the filename (source of truth)
+  const dims = parseFilnameDimensions(output.filename || output.storage_path);
+
+  const inLabel = dims.wIn != null ? `${dims.wIn} × ${dims.hIn} in` : null;
+  const pxLabel = dims.wPx != null ? `${dims.wPx} × ${dims.hPx} px` : null;
+  const cmLabel = dims.wMm != null
+    ? `${(dims.wMm / 10).toFixed(1)} × ${(dims.hMm / 10).toFixed(1)} cm`
+    : null;
 
   // Expiry badge
   let expiryBadge = null;
@@ -522,9 +538,14 @@ function OutputTile({ output, isNew, expiresAt, isExpired }) {
           {output.size_label || output.ratio_key}
         </p>
         <div className="flex flex-wrap gap-1 mt-1 justify-center">
-          {output.size_label && (
+          {inLabel && (
             <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-sky-100 text-sky-700">
-              {output.size_label} in
+              {inLabel}
+            </span>
+          )}
+          {cmLabel && (
+            <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-teal-100 text-teal-700">
+              {cmLabel}
             </span>
           )}
           {pxLabel && (
