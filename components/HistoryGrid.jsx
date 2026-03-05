@@ -128,16 +128,17 @@ function ImageCard({
   const isExpired = !!image.expired_at;
   const outputCount = image.outputs?.length || 0;
 
-  // Expiry countdown for active images that have an expires_at
+  // Expiry info for active images that have an expires_at
   let expiryLabel = null;
   let expiryDaysLeft = 0;
   if (!isExpired && image.expires_at) {
     expiryDaysLeft = Math.ceil(
       (new Date(image.expires_at) - Date.now()) / (1000 * 60 * 60 * 24)
     );
-    if (expiryDaysLeft <= 7) {
-      expiryLabel = `Expires in ${expiryDaysLeft} day${expiryDaysLeft !== 1 ? 's' : ''}`;
-    }
+    const dateStr = new Date(image.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    expiryLabel = expiryDaysLeft <= 7
+      ? `Expires in ${expiryDaysLeft} day${expiryDaysLeft !== 1 ? 's' : ''}`
+      : `Files expire ${dateStr}`;
   }
 
   const statusLabel =
@@ -247,7 +248,7 @@ function ImageCard({
             <p className="text-xs text-gray-400 mt-1">Files deleted &mdash; upload again to re-create</p>
           )}
           {!isExpired && expiryLabel && (
-            <p className={`text-xs mt-1 font-medium ${expiryDaysLeft <= 2 ? 'text-orange-600' : 'text-amber-600'}`}>
+            <p className={`text-xs mt-1 font-medium ${expiryDaysLeft <= 2 ? 'text-orange-600' : expiryDaysLeft <= 7 ? 'text-amber-600' : 'text-gray-400'}`}>
               {expiryLabel}
             </p>
           )}
@@ -413,7 +414,7 @@ function ImageCard({
                       </h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                         {ratioOutputs.map((out) => (
-                          <OutputTile key={out.id} output={out} isNew={newOutputIds.has(out.id)} />
+                          <OutputTile key={out.id} output={out} isNew={newOutputIds.has(out.id)} expiresAt={image.expires_at} isExpired={isExpired} />
                         ))}
                       </div>
                     </div>
@@ -423,7 +424,7 @@ function ImageCard({
                 /* Flat list */
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                   {sortedOutputs.map((out) => (
-                    <OutputTile key={out.id} output={out} isNew={newOutputIds.has(out.id)} />
+                    <OutputTile key={out.id} output={out} isNew={newOutputIds.has(out.id)} expiresAt={image.expires_at} isExpired={isExpired} />
                   ))}
                 </div>
               )}
@@ -437,7 +438,7 @@ function ImageCard({
 
 /* ─── Output Tile ────────────────────────────────────────── */
 
-function OutputTile({ output, isNew }) {
+function OutputTile({ output, isNew, expiresAt, isExpired }) {
   const ext = output.format === 'png' ? 'PNG' : 'JPG';
 
   return (
@@ -499,6 +500,16 @@ function OutputTile({ output, isNew }) {
             </span>
           )}
         </div>
+        {!isExpired && expiresAt && (() => {
+          const daysLeft = Math.ceil((new Date(expiresAt) - Date.now()) / (1000 * 60 * 60 * 24));
+          const dateStr = new Date(expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const colorClass = daysLeft <= 2 ? 'text-orange-500' : daysLeft <= 7 ? 'text-amber-500' : 'text-gray-300';
+          return (
+            <p className={`text-[9px] ${colorClass}`} title={`Files expire ${new Date(expiresAt).toLocaleDateString()}`}>
+              Exp. {dateStr}
+            </p>
+          );
+})()}
       </div>
     </div>
   );
