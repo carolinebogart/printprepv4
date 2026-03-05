@@ -28,19 +28,19 @@ function computeBadgeMessage(qualityData) {
   }
 
   const nativeTiers = tierOrder.filter((t) => allSizes.some((s) => s.nativeCol === t));
-  const upscaleOnly = upscaleTiers.filter((t) => !nativeTiers.includes(t));
+
+  function toList(tiers) {
+    const labels = tiers.map((t) => tierLabels[t]);
+    if (labels.length === 1) return labels[0];
+    if (labels.length === 2) return labels[0] + ' and ' + labels[1];
+    return labels.slice(0, -1).join(', ') + ', and ' + labels[labels.length - 1];
+  }
 
   const parts = [];
   if (nativeTiers.length > 0) {
-    parts.push(nativeTiers.map((t) => tierLabels[t]).join(', ') + ' outputs available natively');
+    parts.push(`Outputs without upscaling: ${toList(nativeTiers)}`);
   }
-  if (upscaleOnly.length > 0) {
-    parts.push(`AI upscaling can additionally reach ${upscaleOnly.map((t) => tierLabels[t]).join(', ')}`);
-  } else if (nativeTiers.length === 0) {
-    parts.push(`AI upscaling can reach ${upscaleTiers.map((t) => tierLabels[t]).join(', ')}`);
-  } else {
-    parts.push('AI upscaling can further improve some sizes');
-  }
+  parts.push(`Outputs with upscaling: ${toList(upscaleTiers)}`);
   parts.push('see table below');
   return parts.join(' — ') + '.';
 }
@@ -141,9 +141,9 @@ function QualityPreviewTable({ qualityData }) {
                     </td>
                   ))}
                 </tr>
-                {/* Row 2: with Real-ESRGAN upscaling */}
+                {/* Row 2: with upscaling */}
                 <tr className="bg-blue-50/60">
-                  <td className="px-2 py-2 font-medium text-gray-500 whitespace-nowrap">Real-ESRGAN ✦</td>
+                  <td className="px-2 py-2 font-medium text-gray-500 whitespace-nowrap">Upscale</td>
                   {QUALITY_COLS.map((col) => (
                     <td key={col.id} className="px-2 py-2 align-top text-gray-700">
                       <SizeCell sizes={ratio.sizes.filter((s) => s.upscaleCol === col.id)} dpiKey="upscaleDpi" />
@@ -156,7 +156,7 @@ function QualityPreviewTable({ qualityData }) {
         </div>
       ))}
       <p className="text-xs text-gray-400 px-1">
-        ✦ Real-ESRGAN: AI super-resolution at 4× scale. Estimated post-upscale DPI shown — actual results vary by image content.
+        Upscale row uses AI super-resolution (Real-ESRGAN, 4× scale). Estimated post-upscale DPI shown — actual results vary by image content.
       </p>
     </div>
   );
