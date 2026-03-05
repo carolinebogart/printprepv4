@@ -220,17 +220,17 @@ function ImageCard({
               </span>
             )}
           </div>
-          <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-1">
+          <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 mt-1 text-[11px]">
             {(() => {
               const specs = getImageSpecs(image.width, image.height);
               return (
                 <>
-                  <span className="text-xs text-gray-500">{image.width}&times;{image.height}px</span>
-                  <span className="text-xs text-gray-400">{specs.ratioStr}</span>
-                  <span className="text-xs text-gray-400">{specs.wIn}" &times; {specs.hIn}"</span>
-                  <span className="text-xs text-gray-400">{specs.wCm} &times; {specs.hCm} cm</span>
-                  <span className="text-xs text-gray-400 capitalize">{image.orientation}</span>
-                  <span className="text-xs text-gray-400">{new Date(image.created_at).toLocaleDateString()}</span>
+                  <span className="rounded px-1.5 py-0.5 font-medium bg-slate-100 text-slate-600">{image.width}&times;{image.height}px</span>
+                  <span className="rounded px-1.5 py-0.5 font-medium bg-violet-100 text-violet-700">Ratio {specs.ratioStr}</span>
+                  <span className="rounded px-1.5 py-0.5 font-medium bg-sky-100 text-sky-700">{specs.wIn} x {specs.hIn} in.</span>
+                  <span className="rounded px-1.5 py-0.5 font-medium bg-teal-100 text-teal-700">{specs.wCm} x {specs.hCm} cm</span>
+                  <span className="rounded px-1.5 py-0.5 font-medium bg-gray-100 text-gray-500 capitalize">{image.orientation}</span>
+                  <span className="rounded px-1.5 py-0.5 font-medium bg-gray-100 text-gray-500">{new Date(image.created_at).toLocaleDateString()}</span>
                 </>
               );
             })()}

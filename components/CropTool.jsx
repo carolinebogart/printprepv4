@@ -797,15 +797,15 @@ export default function CropTool({
             {originalFilename}
           </div>
           {/* Row 1: Dimensions + specs + sacrifice direction + warnings */}
-          <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
+          <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-[11px]">
             {(() => {
               const specs = getImageSpecs(originalWidth, originalHeight);
               return (
                 <>
-                  <span>{originalWidth}×{originalHeight}px</span>
-                  <span>{specs.ratioStr}</span>
-                  <span>{specs.wIn}" × {specs.hIn}"</span>
-                  <span>{specs.wCm} × {specs.hCm} cm</span>
+                  <span className="rounded px-1.5 py-0.5 font-medium bg-slate-100 text-slate-600">{originalWidth}×{originalHeight}px</span>
+                  <span className="rounded px-1.5 py-0.5 font-medium bg-violet-100 text-violet-700">Ratio {specs.ratioStr}</span>
+                  <span className="rounded px-1.5 py-0.5 font-medium bg-sky-100 text-sky-700">{specs.wIn} x {specs.hIn} in.</span>
+                  <span className="rounded px-1.5 py-0.5 font-medium bg-teal-100 text-teal-700">{specs.wCm} x {specs.hCm} cm</span>
                 </>
               );
             })()}
