@@ -60,6 +60,7 @@ export default function CropTool({
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [successData, setSuccessData] = useState(null); // { imageId, expiresAt, count }
+  const [activityLog, setActivityLog] = useState([]); // [{ text, done }]
 
   // Resolution calculator modal
   const [calcOpen, setCalcOpen] = useState(false);
@@ -518,6 +519,9 @@ export default function CropTool({
     saveCropState();
     setProcessing(true);
     setError(null);
+    setSuccessData(null);
+    setActivityLog([]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Collect crop data for all selected ratios
     const cropper = cropperRef.current?.cropper;
@@ -570,6 +574,37 @@ export default function CropTool({
       return;
     }
 
+    // Kick off timed activity log simulation
+    const totalFiles = allCropData.reduce((n, c) => n + c.sizes.length, 0);
+    const timers = [];
+
+    // Phase 1: Preparing image
+    setActivityLog([{ text: 'Preparing image...', done: false }]);
+
+    // Phase 2: Generating outputs (1.5s)
+    timers.push(setTimeout(() => {
+      setActivityLog([
+        { text: 'Preparing image...', done: true },
+        { text: 'Generating outputs...', done: false },
+      ]);
+    }, 1500));
+
+    // Phase 3: Tick file counter every 1.5s starting at 2s
+    let filesDone = 0;
+    timers.push(setTimeout(() => {
+      const tick = setInterval(() => {
+        filesDone = Math.min(filesDone + 1, totalFiles - 1);
+        setActivityLog([
+          { text: 'Preparing image...', done: true },
+          { text: 'Generating outputs...', done: true },
+          { text: `${filesDone} of ${totalFiles} files done...`, done: false },
+        ]);
+      }, 1500);
+      timers.push(tick);
+    }, 2000));
+
+    const clearTimers = () => timers.forEach((t) => clearTimeout(t));
+
     try {
       const res = await fetch('/api/process', {
         method: 'POST',
@@ -578,10 +613,12 @@ export default function CropTool({
       });
 
       const data = await res.json();
+      clearTimers();
 
       if (!res.ok) {
         setError(data.error || 'Processing failed.');
         setProcessing(false);
+        setActivityLog([]);
         return;
       }
 
@@ -594,8 +631,10 @@ export default function CropTool({
       });
       setProcessing(false);
     } catch {
+      clearTimers();
       setError('Processing failed. Please try again.');
       setProcessing(false);
+      setActivityLog([]);
     }
   };
 
@@ -887,44 +926,24 @@ export default function CropTool({
           </label>
         </div>
 
-        {/* Generate button / success panel */}
+        {/* Generate button */}
         <div className="mt-6 pt-4 border-t border-gray-200">
+          {error && <div className="flash-error text-xs mb-2">{error}</div>}
           {successData ? (
-            <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-center">
-              <p className="text-sm font-semibold text-green-800 mb-1">
-                {successData.count} file{successData.count !== 1 ? 's' : ''} ready
-              </p>
-              {successData.expiresAt && (
-                <p className="text-xs text-amber-700 mb-3">
-                  Download by{' '}
-                  <strong>
-                    {new Date(successData.expiresAt).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </strong>{' '}
-                  — files are deleted after that.
-                </p>
-              )}
-              <button
-                onClick={() => router.push(`/history?new=${successData.imageId}`)}
-                className="btn-primary w-full py-2"
-              >
-                View &amp; Download
-              </button>
-            </div>
+            <button
+              onClick={() => router.push(`/history?new=${successData.imageId}`)}
+              className="btn-primary w-full py-2.5"
+            >
+              View &amp; Download
+            </button>
           ) : (
-            <>
-              {error && <div className="flash-error text-xs mb-2">{error}</div>}
-              <button
-                onClick={handleGenerate}
-                disabled={totalSelectedSizes === 0 || processing}
-                className="btn-primary w-full py-2.5"
-              >
-                {processing ? 'Processing...' : totalSelectedSizes === 0 ? 'Select sizes to generate' : `Generate ${totalSelectedSizes} size${totalSelectedSizes !== 1 ? 's' : ''}`}
-              </button>
-            </>
+            <button
+              onClick={handleGenerate}
+              disabled={totalSelectedSizes === 0 || processing}
+              className="btn-primary w-full py-2.5"
+            >
+              {processing ? 'Processing...' : totalSelectedSizes === 0 ? 'Select sizes to generate' : `Generate ${totalSelectedSizes} size${totalSelectedSizes !== 1 ? 's' : ''}`}
+            </button>
           )}
         </div>
       </div>
@@ -1010,6 +1029,62 @@ export default function CropTool({
             </div>
           </div>
         </div>
+
+        {/* Processing / Success Banner */}
+        {(processing || successData) && (
+          <div className={`border-b px-6 py-4 flex-shrink-0 ${successData ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
+            {successData ? (
+              <div className="flex items-center gap-6">
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-green-800">
+                    {successData.count} file{successData.count !== 1 ? 's' : ''} ready to download
+                  </p>
+                  {successData.expiresAt && (
+                    <p className="text-xs text-amber-700 mt-0.5">
+                      Download by{' '}
+                      <strong>
+                        {new Date(successData.expiresAt).toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </strong>{' '}
+                      — files are deleted after that.
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => router.push(`/history?new=${successData.imageId}`)}
+                  className="btn-primary py-2 px-4 whitespace-nowrap"
+                >
+                  View &amp; Download
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="animate-spin h-4 w-4 text-gray-500 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span className="text-sm font-semibold text-gray-700">Processing your image...</span>
+                </div>
+                <div className="space-y-0.5 font-mono text-xs text-gray-500">
+                  {activityLog.map((entry, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      {entry.done ? (
+                        <span className="text-green-600">&#10003;</span>
+                      ) : (
+                        <span className="inline-block w-3 h-3 rounded-full border-2 border-gray-400 border-t-transparent animate-spin" />
+                      )}
+                      <span className={entry.done ? 'text-gray-400' : 'text-gray-600'}>{entry.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Cropper canvas */}
         <div
