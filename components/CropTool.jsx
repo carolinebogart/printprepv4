@@ -21,14 +21,9 @@ export default function CropTool({
   const cropperRef = useRef(null);
   const targetCropBoxRef = useRef(null);
 
-  // Which ratios are selected — start with all ratios that have at least one non-disabled size
+  // Which ratios are selected — start with none selected
   const [selectedRatios, setSelectedRatios] = useState(() =>
-    ratios.reduce((acc, r) => {
-      const hasSelectable = r.sizes.some(
-        (s) => !getQualityBadge(originalWidth, originalHeight, s.width, s.height).disabled
-      );
-      return { ...acc, [r.key]: hasSelectable };
-    }, {})
+    ratios.reduce((acc, r) => ({ ...acc, [r.key]: false }), {})
   );
 
   // Current ratio being edited
@@ -37,23 +32,15 @@ export default function CropTool({
   // Per-ratio crop state
   const [cropStates, setCropStates] = useState(() =>
     ratios.reduce((acc, r) => {
-      // Find the largest non-disabled size index (sizes sorted ascending, so iterate from end)
-      let largestIdx = -1;
-      for (let i = r.sizes.length - 1; i >= 0; i--) {
-        if (!getQualityBadge(originalWidth, originalHeight, r.sizes[i].width, r.sizes[i].height).disabled) {
-          largestIdx = i;
-          break;
-        }
-      }
       return {
         ...acc,
         [r.key]: {
           canvasData: null,
           cropBoxData: null,
-          sizes: r.sizes.map((s, i) => ({
+          sizes: r.sizes.map((s) => ({
             ...s,
             useUpscaling: null,
-            selected: i === largestIdx,
+            selected: false,
           })),
           upscaleMode: null, // null = use global masterView; 'native' | 'upscale' = per-ratio override
           backgroundColor: '#FFFFFF',
@@ -317,6 +304,50 @@ export default function CropTool({
           (s) => !getQualityBadge(originalWidth, originalHeight, s.width, s.height).disabled
         );
         return { ...acc, [r.key]: hasSelectable };
+      }, {})
+    );
+  };
+
+  // Select (or deselect if already all selected) the largest non-disabled size in each ratio
+  const selectLargestGlobal = () => {
+    // Find the largest non-disabled size index for each ratio
+    const largestIdxByKey = {};
+    for (const r of ratios) {
+      let idx = -1;
+      for (let i = r.sizes.length - 1; i >= 0; i--) {
+        if (!getQualityBadge(originalWidth, originalHeight, r.sizes[i].width, r.sizes[i].height).disabled) {
+          idx = i;
+          break;
+        }
+      }
+      largestIdxByKey[r.key] = idx;
+    }
+    // Check if all largest sizes are already selected (to toggle off)
+    const allLargestSelected = ratios.every((r) => {
+      const idx = largestIdxByKey[r.key];
+      return idx === -1 || cropStates[r.key].sizes[idx].selected;
+    });
+    const newSelected = !allLargestSelected;
+    setCropStates((prev) => {
+      const next = {};
+      for (const r of ratios) {
+        const idx = largestIdxByKey[r.key];
+        next[r.key] = {
+          ...prev[r.key],
+          sizes: prev[r.key].sizes.map((s, i) => ({ ...s, selected: i === idx ? newSelected : s.selected })),
+        };
+      }
+      return next;
+    });
+    setSelectedRatios(
+      ratios.reduce((acc, r) => {
+        const idx = largestIdxByKey[r.key];
+        const willHaveSelection = newSelected && idx !== -1;
+        // Keep existing ratio selection or set based on whether largest is now selected
+        const anyOtherSelected = idx === -1
+          ? false
+          : cropStates[r.key].sizes.some((s, i) => i !== idx && s.selected);
+        return { ...acc, [r.key]: willHaveSelection || anyOtherSelected };
       }, {})
     );
   };
@@ -626,8 +657,8 @@ export default function CropTool({
             );
           })}
         </div>
-        {/* Global select all / none */}
-        <div className="flex gap-1.5 mb-3">
+        {/* Global select all / none / largest */}
+        <div className="flex gap-1.5 mb-3 flex-wrap">
           <button
             onClick={selectAllGlobal}
             className="flex-1 text-xs py-1 px-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
@@ -639,6 +670,12 @@ export default function CropTool({
             className="flex-1 text-xs py-1 px-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
           >
             Select none
+          </button>
+          <button
+            onClick={selectLargestGlobal}
+            className="w-full text-xs py-1 px-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+          >
+            Select largest
           </button>
         </div>
 
