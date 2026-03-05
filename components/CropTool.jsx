@@ -232,6 +232,26 @@ export default function CropTool({
 
   // Master mode toggle: applies to all ratios and auto-selects/deselects them
   const handleMasterUpscaleMode = (mode) => {
+    const allInMode = Object.keys(cropStates).every(
+      (key) => cropStates[key].upscaleMode === mode
+    );
+
+    if (allInMode) {
+      setCropStates((prev) => {
+        const next = {};
+        for (const key of Object.keys(prev)) {
+          next[key] = {
+            ...prev[key],
+            upscaleMode: null,
+            sizes: prev[key].sizes.map((s) => ({ ...s, selected: false })),
+          };
+        }
+        return next;
+      });
+      setSelectedRatios(ratios.reduce((acc, r) => ({ ...acc, [r.key]: false }), {}));
+      return;
+    }
+
     const useUpscaling = mode === 'upscale';
 
     setCropStates((prev) => {
