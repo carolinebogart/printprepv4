@@ -469,6 +469,26 @@ function OutputTile({ output, isNew, expiresAt, isExpired }) {
     ? `${(dims.wMm / 10).toFixed(1)} × ${(dims.hMm / 10).toFixed(1)} cm`
     : null;
 
+  // Show a ratio badge when size_label is not already in "WxH" integer form (e.g. A-Series labels like "A0")
+  let ratioLabel = null;
+  const isNumericSizeLabel = output.size_label && /^[\d.]+x[\d.]+$/i.test(output.size_label);
+  if (!isNumericSizeLabel && dims.wIn != null && dims.hIn != null) {
+    const r = dims.wIn / dims.hIn;
+    const fmt = (n) => Number.isInteger(n) ? `${n}` : n.toFixed(1);
+    // Express as W:H normalised so the smaller side is 1 if ratio < 1, else H is 1
+    ratioLabel = r <= 1 ? `${fmt(r * (1 / r))}:${fmt(1 / r * r / r)}` : `${fmt(r)}:1`;
+    // Simpler: just show W/H reduced nicely
+    const gcd = (a, b) => b < 0.001 ? a : gcd(b, a % b);
+    const g = gcd(dims.wIn, dims.hIn);
+    const rw = dims.wIn / g;
+    const rh = dims.hIn / g;
+    const fmtR = (n) => {
+      const rounded = Math.round(n * 10) / 10;
+      return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
+    };
+    ratioLabel = `${fmtR(rw)}:${fmtR(rh)}`;
+  }
+
   // Expiry badge
   let expiryBadge = null;
   if (!isExpired && expiresAt) {
@@ -480,7 +500,7 @@ function OutputTile({ output, isNew, expiresAt, isExpired }) {
       ? 'bg-amber-50 text-amber-600 ring-1 ring-amber-200'
       : 'bg-gray-100 text-gray-500';
     expiryBadge = (
-      <span className={`rounded px-1.5 py-0.5 font-medium ${cls}`} title={`Files expire ${new Date(expiresAt).toLocaleDateString()}`}>
+      <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${cls}`} title={`Files expire ${new Date(expiresAt).toLocaleDateString()}`}>
         Exp. {dateStr}
       </span>
     );
@@ -538,6 +558,11 @@ function OutputTile({ output, isNew, expiresAt, isExpired }) {
           {output.size_label || output.ratio_key}
         </p>
         <div className="flex flex-wrap gap-1 mt-1 justify-center">
+          {ratioLabel && (
+            <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-violet-100 text-violet-700">
+              {ratioLabel}
+            </span>
+          )}
           {inLabel && (
             <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-sky-100 text-sky-700">
               {inLabel}
