@@ -52,7 +52,7 @@ export default function CropTool({
           cropBoxData: null,
           sizes: r.sizes.map((s, i) => ({
             ...s,
-            useUpscaling: false,
+            useUpscaling: null,
             selected: i === largestIdx,
           })),
           upscaleMode: null, // null = use global masterView; 'native' | 'upscale' = per-ratio override
@@ -204,10 +204,21 @@ export default function CropTool({
   };
 
   // Toggle useUpscaling for a single size (does not affect selection)
+  // Tri-state: null = follow view, true = locked AI, false = locked native
+  // In native view: null→true, true→null
+  // In upscale view: null→false, false→null
   const toggleSizeUpscaling = (ratioKey, sizeIndex) => {
+    const effectiveMode = cropStates[ratioKey].upscaleMode ?? masterView;
     setCropStates((prev) => {
       const sizes = [...prev[ratioKey].sizes];
-      sizes[sizeIndex] = { ...sizes[sizeIndex], useUpscaling: !sizes[sizeIndex].useUpscaling };
+      const current = sizes[sizeIndex].useUpscaling;
+      let next;
+      if (effectiveMode === 'upscale') {
+        next = current === false ? null : false;
+      } else {
+        next = current === true ? null : true;
+      }
+      sizes[sizeIndex] = { ...sizes[sizeIndex], useUpscaling: next };
       return { ...prev, [ratioKey]: { ...prev[ratioKey], sizes } };
     });
   };
@@ -236,7 +247,7 @@ export default function CropTool({
       [ratioKey]: {
         ...prev[ratioKey],
         upscaleMode: mode,
-        sizes: prev[ratioKey].sizes.map((s) => ({ ...s, useUpscaling: false })),
+        sizes: prev[ratioKey].sizes.map((s) => ({ ...s, useUpscaling: null })),
       },
     }));
   };
@@ -251,7 +262,7 @@ export default function CropTool({
         next[key] = {
           ...prev[key],
           upscaleMode: null,
-          sizes: prev[key].sizes.map((s) => ({ ...s, useUpscaling: false })),
+          sizes: prev[key].sizes.map((s) => ({ ...s, useUpscaling: null })),
         };
       }
       return next;
@@ -583,7 +594,7 @@ export default function CropTool({
   const hasAIUpscaleSizes = selectedRatioKeys.some((key) =>
     cropStates[key].sizes.some((size) => {
       const badge = getQualityBadge(originalWidth, originalHeight, size.width, size.height);
-      return size.selected && !badge.disabled && size.useUpscaling;
+      return size.selected && !badge.disabled && size.useUpscaling === true;
     })
   );
 
@@ -709,15 +720,16 @@ export default function CropTool({
                   .map(({ size, i }) => {
                     const badge = getQualityBadge(originalWidth, originalHeight, size.width, size.height);
                     const effectiveMode = cropStates[r.key].upscaleMode ?? masterView;
-                    // Display upscaled DPI if: (a) this size is committed to upscale, or (b) view is upscale (preview)
-                    const showUpscaled = size.useUpscaling || effectiveMode === 'upscale';
+                    // Display upscaled DPI if: locked to AI (true), or following upscale view (null + upscale mode)
+                    // NOT if locked to native (false) even when view is upscale
+                    const showUpscaled = size.useUpscaling === true || (size.useUpscaling === null && effectiveMode === 'upscale');
                     const upscaledDpi = badge.estimatedDpi ?? Math.min(badge.dpi * 4, 300);
                     let effectiveDpiLabel, effectiveBadgeColor;
                     if (showUpscaled) {
                       effectiveDpiLabel = `~${upscaledDpi} DPI · AI ✦`;
-                      effectiveBadgeColor = size.useUpscaling
-                        ? 'text-blue-700 bg-blue-100 border-blue-400' // committed
-                        : 'text-blue-600 bg-blue-50 border-blue-200'; // preview only
+                      effectiveBadgeColor = size.useUpscaling === true
+                        ? 'text-blue-700 bg-blue-100 border-blue-400' // locked to AI
+                        : 'text-blue-600 bg-blue-50 border-blue-200'; // following view (preview)
                     } else if (badge.requiresUpscaling) {
                       // Native DPI is below usable threshold — show honestly, not as "AI Upscale"
                       effectiveDpiLabel = `${badge.dpi} DPI · Low`;
@@ -755,11 +767,17 @@ export default function CropTool({
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleSizeUpscaling(r.key, i); }}
                           className={`ml-auto text-[10px] px-1.5 py-0.5 rounded border font-medium flex-shrink-0 ${
-                            size.useUpscaling
+                            size.useUpscaling === true
                               ? 'text-blue-700 bg-blue-100 border-blue-400 hover:bg-blue-200'
+                              : size.useUpscaling === false
+                              ? 'text-gray-500 bg-gray-100 border-gray-400 hover:bg-gray-200'
                               : 'text-gray-300 bg-white border-gray-200 hover:text-gray-500 hover:border-gray-300'
                           }`}
-                          title={size.useUpscaling ? 'AI upscale on — click for native' : 'Click to enable AI upscale'}
+                          title={
+                            size.useUpscaling === true ? 'Locked to AI upscale — click to unset' :
+                            size.useUpscaling === false ? 'Locked to native — click to unset' :
+                            effectiveMode === 'upscale' ? 'Click to lock this size to native' : 'Click to lock this size to AI upscale'
+                          }
                         >
                           ✦
                         </button>
