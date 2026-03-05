@@ -440,6 +440,35 @@ function ImageCard({
 
 function OutputTile({ output, isNew, expiresAt, isExpired }) {
   const ext = output.format === 'png' ? 'PNG' : 'JPG';
+  const dpi = output.dpi || 300;
+
+  // Derive pixel dimensions from size_label (e.g. "8x10") and dpi
+  let pxLabel = null;
+  if (output.size_label) {
+    const match = output.size_label.match(/^([\d.]+)x([\d.]+)$/i);
+    if (match) {
+      const wpx = Math.round(parseFloat(match[1]) * dpi);
+      const hpx = Math.round(parseFloat(match[2]) * dpi);
+      pxLabel = `${wpx}×${hpx}px`;
+    }
+  }
+
+  // Expiry badge
+  let expiryBadge = null;
+  if (!isExpired && expiresAt) {
+    const daysLeft = Math.ceil((new Date(expiresAt) - Date.now()) / (1000 * 60 * 60 * 24));
+    const dateStr = new Date(expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const cls = daysLeft <= 2
+      ? 'bg-orange-50 text-orange-600 ring-1 ring-orange-200'
+      : daysLeft <= 7
+      ? 'bg-amber-50 text-amber-600 ring-1 ring-amber-200'
+      : 'bg-gray-100 text-gray-500';
+    expiryBadge = (
+      <span className={`rounded px-1.5 py-0.5 font-medium ${cls}`} title={`Files expire ${new Date(expiresAt).toLocaleDateString()}`}>
+        Exp. {dateStr}
+      </span>
+    );
+  }
 
   return (
     <div className="group relative">
@@ -485,31 +514,32 @@ function OutputTile({ output, isNew, expiresAt, isExpired }) {
       </div>
 
       {/* Label */}
-      <div className="mt-1.5 text-center">
+      <div className="mt-1.5">
         <p
-          className="text-[11px] font-medium text-gray-700 truncate"
+          className="text-[11px] font-semibold text-gray-800 truncate text-center"
           title={output.size_label || output.filename}
         >
           {output.size_label || output.ratio_key}
         </p>
-        <div className="flex items-center justify-center gap-1">
-          <span className="text-[10px] text-gray-400">{ext}</span>
-          {output.created_at && (
-            <span className="text-[9px] text-gray-300" title={new Date(output.created_at).toLocaleString()}>
-              {new Date(output.created_at).toLocaleDateString()}
+        <div className="flex flex-wrap gap-1 mt-1 justify-center">
+          {output.size_label && (
+            <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-sky-100 text-sky-700">
+              {output.size_label} in
             </span>
           )}
+          {pxLabel && (
+            <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 text-slate-600">
+              {pxLabel}
+            </span>
+          )}
+          <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-violet-100 text-violet-700">
+            {dpi} DPI
+          </span>
+          <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-500">
+            {ext}
+          </span>
+          {expiryBadge}
         </div>
-        {!isExpired && expiresAt && (() => {
-          const daysLeft = Math.ceil((new Date(expiresAt) - Date.now()) / (1000 * 60 * 60 * 24));
-          const dateStr = new Date(expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const colorClass = daysLeft <= 2 ? 'text-orange-500' : daysLeft <= 7 ? 'text-amber-500' : 'text-gray-300';
-          return (
-            <p className={`text-[9px] ${colorClass}`} title={`Files expire ${new Date(expiresAt).toLocaleDateString()}`}>
-              Exp. {dateStr}
-            </p>
-          );
-})()}
       </div>
     </div>
   );
