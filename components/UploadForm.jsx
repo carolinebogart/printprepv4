@@ -24,7 +24,7 @@ function computeBadgeMessage(qualityData) {
 
   const upscaleTiers = tierOrder.filter((t) => allSizes.some((s) => s.upscaleCol === t));
   if (upscaleTiers.length === 0) {
-    return 'Image resolution is too low for any usable output, even with AI upscaling.';
+    return 'Image resolution is very low — outputs will have reduced quality. You can still proceed.';
   }
 
   const nativeTiers = tierOrder.filter((t) => allSizes.some((s) => s.nativeCol === t));
@@ -56,7 +56,7 @@ function getQualityBadge(srcW, srcH, targetWIn, targetHIn) {
   if (effectiveDPI >= 200) return { label: 'Good',      tier: 'good',      dpi: Math.round(effectiveDPI) };
   if (effectiveDPI >= 150) return { label: 'Fair',      tier: 'fair',      dpi: Math.round(effectiveDPI) };
   if (effectiveDPI >= 35)  return { label: 'AI Upscale', tier: 'upscale', dpi: Math.round(effectiveDPI), estimatedDpi: Math.min(Math.round(effectiveDPI * 4), 300) };
-  return { label: 'Unavailable', tier: 'disabled', dpi: Math.round(effectiveDPI) };
+  return { label: 'Low DPI', tier: 'low', dpi: Math.round(effectiveDPI) };
 }
 
 function getCropSourceDims(imgW, imgH, targetRatio) {
@@ -70,7 +70,7 @@ function dpiToCol(dpi) {
   if (dpi >= 300) return 'excellent';
   if (dpi >= 200) return 'good';
   if (dpi >= 150) return 'fair';
-  return 'unavailable';
+  return 'low';
 }
 
 function computeQualityData(imgW, imgH) {
@@ -80,8 +80,8 @@ function computeQualityData(imgW, imgH) {
     const sizes = def.sizes.map((s) => {
       const badge = getQualityBadge(crop.w, crop.h, s.width, s.height);
       const nativeDpi = badge.dpi;
-      // Native row: anything below Fair (< 150 DPI) goes in unavailable
-      const nativeCol = (badge.tier === 'upscale' || badge.tier === 'disabled') ? 'unavailable' : badge.tier;
+      // Native row: anything below Fair (< 150 DPI) goes in low
+      const nativeCol = (badge.tier === 'upscale' || badge.tier === 'low') ? 'low' : badge.tier;
       // Upscale row: apply 4× Real-ESRGAN estimate; already-excellent stays excellent
       const upscaleDpi = badge.tier === 'excellent' ? nativeDpi : Math.min(Math.round(nativeDpi * 4), 300);
       const upscaleCol = badge.tier === 'excellent' ? 'excellent' : dpiToCol(upscaleDpi);
@@ -113,7 +113,7 @@ const QUALITY_COLS = [
   { id: 'excellent',   label: 'Excellent',   subLabel: '300+ DPI',     thClass: 'w-36 text-green-800 bg-green-200 border-green-300'   },
   { id: 'good',        label: 'Good',        subLabel: '200–299 DPI',  thClass: 'w-36 text-yellow-700 bg-yellow-50 border-yellow-200' },
   { id: 'fair',        label: 'Fair',        subLabel: '150–199 DPI',  thClass: 'w-36 text-orange-600 bg-orange-50 border-orange-200' },
-  { id: 'unavailable', label: 'Unavailable', subLabel: 'Low Quality',  thClass: 'w-36 text-gray-400 bg-gray-50 border-gray-200'      },
+  { id: 'low',         label: 'Low DPI',     subLabel: '⚠ Low Quality', thClass: 'w-36 text-red-600 bg-red-50 border-red-200'         },
 ];
 
 function SizeCell({ sizes, dpiKey, muted }) {

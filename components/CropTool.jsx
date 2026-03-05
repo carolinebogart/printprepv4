@@ -448,12 +448,7 @@ export default function CropTool({
 
     for (const ratioKey of selectedRatioKeys) {
       const state = cropStates[ratioKey];
-      const selectedSizes = state.sizes.filter((s) => {
-        if (!s.selected) return false;
-        // Exclude sizes that are disabled due to low DPI (< 150)
-        const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
-        return !badge.disabled;
-      });
+      const selectedSizes = state.sizes.filter((s) => s.selected);
       if (selectedSizes.length === 0) continue;
 
       // Get crop box data — we need to switch to each ratio to get accurate data
@@ -823,8 +818,8 @@ export default function CropTool({
               <span className="text-green-600">✓ Ratios match — no cropping needed</span>
             )}
             {hasDisabledSizes && (
-              <span className="text-amber-700 font-medium">
-                ⚠ Some sizes are too low resolution and cannot be generated
+              <span className="text-red-600 font-medium">
+                ⚠ Some sizes are very low resolution — output quality will be poor
               </span>
             )}
             {hasAIUpscaleSizes && (
@@ -966,5 +961,5 @@ function getQualityBadge(cropSourceWidth, cropSourceHeight, targetWidthInches, t
     const estimatedDpi = Math.min(Math.round(effectiveDPI * 4), 300);
     return { label: 'AI Upscale', color: 'text-blue-700 bg-blue-50 border-blue-200', dpi: Math.round(effectiveDPI), estimatedDpi, disabled: false, requiresUpscaling: true };
   }
-  return { label: 'Low quality', color: 'text-red-600 bg-red-50 border-red-200', dpi: Math.round(effectiveDPI), disabled: true };
+  return { label: 'Low quality', color: 'text-red-600 bg-red-50 border-red-200', dpi: Math.round(effectiveDPI), disabled: false };
 }
