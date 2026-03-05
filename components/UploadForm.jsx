@@ -110,17 +110,17 @@ function fmtIn(n) {
 // Quality columns — best on left, unavailable on right
 // w-36 on every column keeps widths identical across all ratio tables when combined with table-fixed
 const QUALITY_COLS = [
-  { id: 'excellent',   label: 'Excellent',   subLabel: '300+ DPI',     thClass: 'w-36 text-green-700 bg-green-50 border-green-200'   },
+  { id: 'excellent',   label: 'Excellent',   subLabel: '300+ DPI',     thClass: 'w-36 text-green-800 bg-green-200 border-green-300'   },
   { id: 'good',        label: 'Good',        subLabel: '200–299 DPI',  thClass: 'w-36 text-yellow-700 bg-yellow-50 border-yellow-200' },
   { id: 'fair',        label: 'Fair',        subLabel: '150–199 DPI',  thClass: 'w-36 text-orange-600 bg-orange-50 border-orange-200' },
   { id: 'unavailable', label: 'Unavailable', subLabel: 'Low Quality',  thClass: 'w-36 text-gray-400 bg-gray-50 border-gray-200'      },
 ];
 
-function SizeCell({ sizes, dpiKey }) {
+function SizeCell({ sizes, dpiKey, muted }) {
   if (sizes.length === 0) return <span className="text-gray-300">—</span>;
   return sizes.map((s) => (
     <div key={s.label}>
-      {s.label}&quot; <span className="text-gray-400">— {s[dpiKey]} DPI</span>
+      {s.label}&quot; <span className={muted ? 'text-green-700 opacity-75' : 'text-gray-400'}>— {s[dpiKey]} DPI</span>
     </div>
   ));
 }
@@ -155,8 +155,8 @@ function QualityPreviewTable({ qualityData }) {
                     const sizes = ratio.sizes.filter((s) => s.nativeCol === col.id);
                     const isExcellent = col.id === 'excellent';
                     return (
-                      <td key={col.id} className={`px-2 py-2 align-top ${isExcellent ? 'bg-green-100 text-green-800 font-medium' : 'text-gray-700'}`}>
-                        <SizeCell sizes={sizes} dpiKey="nativeDpi" />
+                      <td key={col.id} className={`px-2 py-2 align-top ${isExcellent ? 'bg-green-200 text-green-900 font-medium' : 'text-gray-700'}`}>
+                        <SizeCell sizes={sizes} dpiKey="nativeDpi" muted={isExcellent} />
                       </td>
                     );
                   })}
@@ -168,8 +168,8 @@ function QualityPreviewTable({ qualityData }) {
                     const sizes = ratio.sizes.filter((s) => s.upscaleCol === col.id);
                     const isExcellent = col.id === 'excellent';
                     return (
-                      <td key={col.id} className={`px-2 py-2 align-top ${isExcellent ? 'bg-green-100 text-green-800 font-medium' : 'text-gray-700'}`}>
-                        <SizeCell sizes={sizes} dpiKey="upscaleDpi" />
+                      <td key={col.id} className={`px-2 py-2 align-top ${isExcellent ? 'bg-green-200 text-green-900 font-medium' : 'text-gray-700'}`}>
+                        <SizeCell sizes={sizes} dpiKey="upscaleDpi" muted={isExcellent} />
                       </td>
                     );
                   })}
