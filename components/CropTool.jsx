@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Cropper from 'react-cropper';
 import 'cropperjs/dist/cropper.css';
 import ResolutionCalculatorModal from './ResolutionCalculatorModal';
+import { getImageSpecs } from '@/lib/output-sizes';
 
 export default function CropTool({
   imageId,
@@ -776,12 +777,23 @@ export default function CropTool({
       <div className="flex-1 flex flex-col bg-gray-100">
         {/* Top bar — image info, navigation, zoom */}
         <div className="bg-white border-b border-gray-200 px-4 py-2 flex-shrink-0 space-y-1">
-          {/* Row 1: Image info + sacrifice direction + warning */}
+          {/* Filename row */}
+          <div className="text-xs font-medium text-gray-700 break-all">
+            {originalFilename}
+          </div>
+          {/* Row 1: Dimensions + specs + sacrifice direction + warnings */}
           <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
-            <span className="font-medium text-gray-700 truncate max-w-[200px]" title={originalFilename}>
-              {originalFilename}
-            </span>
-            <span>{originalWidth}×{originalHeight}px</span>
+            {(() => {
+              const specs = getImageSpecs(originalWidth, originalHeight);
+              return (
+                <>
+                  <span>{originalWidth}×{originalHeight}px</span>
+                  <span>{specs.ratioStr}</span>
+                  <span>{specs.wIn}" × {specs.hIn}"</span>
+                  <span>{specs.wCm} × {specs.hCm} cm</span>
+                </>
+              );
+            })()}
             {sacrificeDir !== 'none' && (
               <span className="text-amber-600">
                 {sacrificeDir === 'horizontal' ? '← → Will sacrifice left/right' : '↑ ↓ Will sacrifice top/bottom'}

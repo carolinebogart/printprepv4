@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { getImageSpecs } from '@/lib/output-sizes';
 
 export default function HistoryGrid({ images }) {
   const [search, setSearch] = useState('');
@@ -219,16 +220,20 @@ function ImageCard({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-gray-500">
-              {image.width}&times;{image.height}
-            </span>
-            <span className="text-xs text-gray-400 capitalize">
-              {image.orientation}
-            </span>
-            <span className="text-xs text-gray-400">
-              {new Date(image.created_at).toLocaleDateString()}
-            </span>
+          <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-1">
+            {(() => {
+              const specs = getImageSpecs(image.width, image.height);
+              return (
+                <>
+                  <span className="text-xs text-gray-500">{image.width}&times;{image.height}px</span>
+                  <span className="text-xs text-gray-400">{specs.ratioStr}</span>
+                  <span className="text-xs text-gray-400">{specs.wIn}" &times; {specs.hIn}"</span>
+                  <span className="text-xs text-gray-400">{specs.wCm} &times; {specs.hCm} cm</span>
+                  <span className="text-xs text-gray-400 capitalize">{image.orientation}</span>
+                  <span className="text-xs text-gray-400">{new Date(image.created_at).toLocaleDateString()}</span>
+                </>
+              );
+            })()}
           </div>
           {!isExpired && image.status === 'processed' && outputCount > 0 && (
             <p className="text-xs text-green-700 mt-1">
