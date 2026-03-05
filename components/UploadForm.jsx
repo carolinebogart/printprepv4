@@ -336,9 +336,7 @@ export default function UploadForm({ isLoggedIn, isActive, hasCredits }) {
                 </div>
               ) : null;
             })()}
-            {resolution.qualityData && (
-              <p className="text-xs mt-1 opacity-90">{computeBadgeMessage(resolution.qualityData)}</p>
-            )}
+
             <p className="text-xs mt-1.5 opacity-80">Upscaling is easy and automatic — just select it when choosing print sizes after upload.</p>
           </div>
 

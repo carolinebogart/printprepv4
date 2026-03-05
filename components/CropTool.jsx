@@ -21,9 +21,14 @@ export default function CropTool({
   const cropperRef = useRef(null);
   const targetCropBoxRef = useRef(null);
 
-  // Which ratios are selected
+  // Which ratios are selected — start with all ratios that have at least one non-disabled size
   const [selectedRatios, setSelectedRatios] = useState(() =>
-    ratios.reduce((acc, r) => ({ ...acc, [r.key]: false }), {})
+    ratios.reduce((acc, r) => {
+      const hasSelectable = r.sizes.some(
+        (s) => !getQualityBadge(originalWidth, originalHeight, s.width, s.height).disabled
+      );
+      return { ...acc, [r.key]: hasSelectable };
+    }, {})
   );
 
   // Current ratio being edited
@@ -31,21 +36,35 @@ export default function CropTool({
 
   // Per-ratio crop state
   const [cropStates, setCropStates] = useState(() =>
-    ratios.reduce((acc, r) => ({
-      ...acc,
-      [r.key]: {
-        canvasData: null,
-        cropBoxData: null,
-        sizes: r.sizes.map((s) => {
-          const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
-          return { ...s, useUpscaling: badge.requiresUpscaling || false };
-        }),
-        upscaleMode: null, // null | 'native' | 'upscale'
-        backgroundColor: '#FFFFFF',
-        useShadow: false,
-      },
-    }), {})
+    ratios.reduce((acc, r) => {
+      // Find the largest non-disabled size index (sizes sorted ascending, so iterate from end)
+      let largestIdx = -1;
+      for (let i = r.sizes.length - 1; i >= 0; i--) {
+        if (!getQualityBadge(originalWidth, originalHeight, r.sizes[i].width, r.sizes[i].height).disabled) {
+          largestIdx = i;
+          break;
+        }
+      }
+      return {
+        ...acc,
+        [r.key]: {
+          canvasData: null,
+          cropBoxData: null,
+          sizes: r.sizes.map((s, i) => ({
+            ...s,
+            useUpscaling: false,
+            selected: i === largestIdx,
+          })),
+          upscaleMode: null, // null = use global masterView; 'native' | 'upscale' = per-ratio override
+          backgroundColor: '#FFFFFF',
+          useShadow: false,
+        },
+      };
+    }, {})
   );
+
+  // Global view filter: 'native' shows sizes with useUpscaling=false, 'upscale' shows useUpscaling=true
+  const [masterView, setMasterView] = useState('native');
 
   // Eyedropper
   const [eyedropperActive, setEyedropperActive] = useState(false);
@@ -184,6 +203,15 @@ export default function CropTool({
     }
   };
 
+  // Toggle useUpscaling for a single size (does not affect selection)
+  const toggleSizeUpscaling = (ratioKey, sizeIndex) => {
+    setCropStates((prev) => {
+      const sizes = [...prev[ratioKey].sizes];
+      sizes[sizeIndex] = { ...sizes[sizeIndex], useUpscaling: !sizes[sizeIndex].useUpscaling };
+      return { ...prev, [ratioKey]: { ...prev[ratioKey], sizes } };
+    });
+  };
+
   // Background color
   const setBackgroundColor = (ratioKey, color) => {
     setCropStates((prev) => ({
@@ -200,94 +228,93 @@ export default function CropTool({
     }));
   };
 
-  // Per-ratio mode toggle: clicking same mode deselects; clicking a new mode switches + selects all
-  const handleRatioModeToggle = (ratioKey, mode) => {
-    const currentMode = cropStates[ratioKey].upscaleMode;
-    const isDeselect = currentMode === mode;
-    const useUpscaling = mode === 'upscale';
-
-    setCropStates((prev) => {
-      const state = prev[ratioKey];
-      const newSizes = isDeselect
-        ? state.sizes.map((s) => ({ ...s, selected: false }))
-        : state.sizes.map((s) => {
-            const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
-            if (badge.disabled) return { ...s, useUpscaling, selected: false };
-            // Native mode: only select sizes with ≥150 DPI natively (Excellent/Good/Fair)
-            const shouldSelect = mode === 'native' ? !badge.requiresUpscaling : true;
-            return { ...s, useUpscaling, selected: shouldSelect };
-          });
-      return {
-        ...prev,
-        [ratioKey]: { ...state, upscaleMode: isDeselect ? null : mode, sizes: newSizes },
-      };
-    });
-
-    if (isDeselect) {
-      if (selectedRatios[ratioKey]) toggleRatio(ratioKey);
-    } else {
-      if (!selectedRatios[ratioKey]) toggleRatio(ratioKey);
-    }
+  // Per-ratio view toggle: changes which sizes are shown for that ratio (no selection changes)
+  const handleRatioViewToggle = (ratioKey, mode) => {
+    if (cropStates[ratioKey].upscaleMode === mode) return; // no-op if already active
+    setCropStates((prev) => ({
+      ...prev,
+      [ratioKey]: { ...prev[ratioKey], upscaleMode: mode },
+    }));
   };
 
-  // Master mode toggle: applies to all ratios and auto-selects/deselects them
-  const handleMasterUpscaleMode = (mode) => {
-    const allInMode = Object.keys(cropStates).every(
-      (key) => cropStates[key].upscaleMode === mode
-    );
+  // Global view toggle: sets masterView and resets all per-ratio overrides (no selection changes)
+  const handleMasterView = (mode) => {
+    if (masterView === mode) return; // no-op if already active
+    setMasterView(mode);
+    setCropStates((prev) => {
+      const next = {};
+      for (const key of Object.keys(prev)) {
+        next[key] = { ...prev[key], upscaleMode: null };
+      }
+      return next;
+    });
+  };
 
-    if (allInMode) {
-      setCropStates((prev) => {
-        const next = {};
-        for (const key of Object.keys(prev)) {
-          next[key] = {
-            ...prev[key],
-            upscaleMode: null,
-            sizes: prev[key].sizes.map((s) => ({ ...s, selected: false })),
-          };
-        }
-        return next;
-      });
-      setSelectedRatios(ratios.reduce((acc, r) => ({ ...acc, [r.key]: false }), {}));
-      return;
-    }
+  // Select all non-disabled sizes in a ratio
+  const selectAllInRatio = (ratioKey) => {
+    setCropStates((prev) => ({
+      ...prev,
+      [ratioKey]: {
+        ...prev[ratioKey],
+        sizes: prev[ratioKey].sizes.map((s) => {
+          const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
+          return badge.disabled ? s : { ...s, selected: true };
+        }),
+      },
+    }));
+    setSelectedRatios((prev) => ({ ...prev, [ratioKey]: true }));
+  };
 
-    const useUpscaling = mode === 'upscale';
+  // Deselect all sizes in a ratio
+  const selectNoneInRatio = (ratioKey) => {
+    setCropStates((prev) => ({
+      ...prev,
+      [ratioKey]: {
+        ...prev[ratioKey],
+        sizes: prev[ratioKey].sizes.map((s) => ({ ...s, selected: false })),
+      },
+    }));
+    setSelectedRatios((prev) => ({ ...prev, [ratioKey]: false }));
+  };
 
+  // Select all non-disabled sizes across all ratios
+  const selectAllGlobal = () => {
     setCropStates((prev) => {
       const next = {};
       for (const key of Object.keys(prev)) {
         next[key] = {
           ...prev[key],
-          upscaleMode: mode,
           sizes: prev[key].sizes.map((s) => {
             const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
-            if (badge.disabled) return { ...s, useUpscaling, selected: false };
-            const shouldSelect = mode === 'native' ? !badge.requiresUpscaling : true;
-            return { ...s, useUpscaling, selected: shouldSelect };
+            return badge.disabled ? s : { ...s, selected: true };
           }),
         };
       }
       return next;
     });
+    setSelectedRatios(
+      ratios.reduce((acc, r) => {
+        const hasSelectable = r.sizes.some(
+          (s) => !getQualityBadge(originalWidth, originalHeight, s.width, s.height).disabled
+        );
+        return { ...acc, [r.key]: hasSelectable };
+      }, {})
+    );
+  };
 
-    // Auto-select ratios that will have at least one selected size
-    const nextSelected = ratios.reduce((acc, r) => {
-      const hasSizes = r.sizes.some((s) => {
-        const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
-        if (badge.disabled) return false;
-        return mode === 'native' ? !badge.requiresUpscaling : true;
-      });
-      return { ...acc, [r.key]: hasSizes };
-    }, {});
-    setSelectedRatios(nextSelected);
-
-    // Set active ratio to first selected
-    const first = ratios.find((r) => nextSelected[r.key]);
-    if (first && first.key !== activeRatio) {
-      saveCropState();
-      setActiveRatio(first.key);
-    }
+  // Deselect all sizes across all ratios
+  const selectNoneGlobal = () => {
+    setCropStates((prev) => {
+      const next = {};
+      for (const key of Object.keys(prev)) {
+        next[key] = {
+          ...prev[key],
+          sizes: prev[key].sizes.map((s) => ({ ...s, selected: false })),
+        };
+      }
+      return next;
+    });
+    setSelectedRatios(ratios.reduce((acc, r) => ({ ...acc, [r.key]: false }), {}));
   };
 
   // Eyedropper: pick color from image via overlay click
@@ -559,19 +586,40 @@ export default function CropTool({
       <div className="w-72 bg-white border-r border-gray-200 overflow-y-auto p-4 flex-shrink-0">
         <h2 className="font-semibold text-gray-900 mb-2">Select Ratios</h2>
 
-        {/* Master upscale toggle */}
+        {/* Global view filter */}
+        <div className="flex gap-1.5 mb-2">
+          {['native', 'upscale'].map((mode) => {
+            const isActive = masterView === mode;
+            return (
+              <button
+                key={mode}
+                onClick={() => handleMasterView(mode)}
+                className={`flex-1 text-xs py-1 px-2 rounded border font-medium ${
+                  isActive
+                    ? mode === 'native'
+                      ? 'border-gray-400 text-gray-700 bg-gray-100'
+                      : 'border-blue-400 text-blue-700 bg-blue-100'
+                    : 'border-gray-200 text-gray-400 bg-white hover:bg-gray-50'
+                }`}
+              >
+                {mode === 'native' ? 'Native' : '+ Upscale'}
+              </button>
+            );
+          })}
+        </div>
+        {/* Global select all / none */}
         <div className="flex gap-1.5 mb-3">
           <button
-            onClick={() => handleMasterUpscaleMode('native')}
+            onClick={selectAllGlobal}
             className="flex-1 text-xs py-1 px-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
           >
-            All native
+            Select all
           </button>
           <button
-            onClick={() => handleMasterUpscaleMode('upscale')}
-            className="flex-1 text-xs py-1 px-2 rounded border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100"
+            onClick={selectNoneGlobal}
+            className="flex-1 text-xs py-1 px-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
           >
-            All AI ✦
+            Select none
           </button>
         </div>
 
@@ -608,15 +656,16 @@ export default function CropTool({
             {/* Size checkboxes — always visible so user sees all options */}
             {
               <div className="ml-6 mt-1 space-y-1">
-                {/* Per-ratio mode toggle: Native / AI Upscale */}
+                {/* Per-ratio view toggle + select all/none */}
                 {cropStates[r.key].sizes.some((s) => !getQualityBadge(originalWidth, originalHeight, s.width, s.height).disabled) && (
-                  <div className="flex gap-1 mb-1">
+                  <div className="flex gap-1 mb-1 flex-wrap">
                     {['native', 'upscale'].map((mode) => {
-                      const isActive = cropStates[r.key].upscaleMode === mode;
+                      const effectiveMode = cropStates[r.key].upscaleMode ?? masterView;
+                      const isActive = effectiveMode === mode;
                       return (
                         <button
                           key={mode}
-                          onClick={(e) => { e.stopPropagation(); handleRatioModeToggle(r.key, mode); }}
+                          onClick={(e) => { e.stopPropagation(); handleRatioViewToggle(r.key, mode); }}
                           className={`text-[10px] py-0.5 px-2 rounded border font-medium ${
                             isActive
                               ? mode === 'native'
@@ -625,36 +674,55 @@ export default function CropTool({
                               : 'border-gray-200 text-gray-400 bg-white hover:bg-gray-50'
                           }`}
                         >
-                          {mode === 'native' ? 'Native' : '✦ Upscale'}
+                          {mode === 'native' ? 'Native' : '+ Upscale'}
                         </button>
                       );
                     })}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); selectAllInRatio(r.key); }}
+                      className="text-[10px] py-0.5 px-2 rounded border border-gray-200 text-gray-500 bg-white hover:bg-gray-50 font-medium"
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); selectNoneInRatio(r.key); }}
+                      className="text-[10px] py-0.5 px-2 rounded border border-gray-200 text-gray-500 bg-white hover:bg-gray-50 font-medium"
+                    >
+                      None
+                    </button>
                   </div>
                 )}
                 {cropStates[r.key].sizes
                   .map((size, i) => ({ size, i }))
                   .filter(({ size }) => {
                     const badge = getQualityBadge(originalWidth, originalHeight, size.width, size.height);
-                    const mode = cropStates[r.key].upscaleMode;
-                    if (badge.disabled) return mode === null; // only show disabled in unfiltered view
-                    if (mode === 'native') return !badge.requiresUpscaling; // ≥150 DPI native
-                    if (mode === 'upscale') return true; // all non-disabled
-                    return true; // no mode: show all
+                    return !badge.disabled; // always show all non-disabled sizes regardless of view
                   })
                   .map(({ size, i }) => {
                     const badge = getQualityBadge(originalWidth, originalHeight, size.width, size.height);
-                    const effectiveDpiLabel = size.useUpscaling && !badge.disabled
-                      ? `~${Math.min(badge.dpi * 4, 300)} DPI · AI ✦`
-                      : `${badge.dpi} DPI · ${badge.label}`;
-                    const effectiveBadgeColor = size.useUpscaling && !badge.disabled
-                      ? 'text-blue-700 bg-blue-50 border-blue-200'
-                      : badge.color;
+                    const effectiveMode = cropStates[r.key].upscaleMode ?? masterView;
+                    // Display upscaled DPI if: (a) this size is committed to upscale, or (b) view is upscale (preview)
+                    const showUpscaled = size.useUpscaling || effectiveMode === 'upscale';
+                    const upscaledDpi = badge.estimatedDpi ?? Math.min(badge.dpi * 4, 300);
+                    let effectiveDpiLabel, effectiveBadgeColor;
+                    if (showUpscaled) {
+                      effectiveDpiLabel = `~${upscaledDpi} DPI · AI ✦`;
+                      effectiveBadgeColor = size.useUpscaling
+                        ? 'text-blue-700 bg-blue-100 border-blue-400' // committed
+                        : 'text-blue-600 bg-blue-50 border-blue-200'; // preview only
+                    } else if (badge.requiresUpscaling) {
+                      // Native DPI is below usable threshold — show honestly, not as "AI Upscale"
+                      effectiveDpiLabel = `${badge.dpi} DPI · Low`;
+                      effectiveBadgeColor = 'text-red-600 bg-red-50 border-red-200';
+                    } else {
+                      effectiveDpiLabel = `${badge.dpi} DPI · ${badge.label}`;
+                      effectiveBadgeColor = badge.color;
+                    }
                     return (
                       <div
                         key={size.label}
-                        className={`flex items-center gap-1.5 rounded px-1 -mx-1 cursor-pointer hover:bg-gray-50 ${badge.disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        className="flex items-center gap-1.5 rounded px-1 -mx-1 cursor-pointer hover:bg-gray-50"
                         onClick={() => {
-                          if (badge.disabled) return;
                           if (!selectedRatios[r.key]) {
                             toggleRatio(r.key);
                           } else if (activeRatio !== r.key) {
@@ -663,20 +731,30 @@ export default function CropTool({
                           toggleSize(r.key, i);
                         }}
                       >
-                        <span className={`flex items-center gap-1.5 text-xs ${badge.disabled ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <span className="flex items-center gap-1.5 text-xs text-gray-600 flex-shrink-0">
                           <input
                             type="checkbox"
-                            checked={!!(size.selected && !badge.disabled)}
+                            checked={!!size.selected}
                             onChange={() => {}}
-                            disabled={badge.disabled}
                             className="rounded border-gray-300 pointer-events-none"
                             tabIndex={-1}
                           />
                           {size.label}&quot;
                         </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${effectiveBadgeColor}`}>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium flex-shrink-0 ${effectiveBadgeColor}`}>
                           {effectiveDpiLabel}
                         </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleSizeUpscaling(r.key, i); }}
+                          className={`ml-auto text-[10px] px-1.5 py-0.5 rounded border font-medium flex-shrink-0 ${
+                            size.useUpscaling
+                              ? 'text-blue-700 bg-blue-100 border-blue-400 hover:bg-blue-200'
+                              : 'text-gray-300 bg-white border-gray-200 hover:text-gray-500 hover:border-gray-300'
+                          }`}
+                          title={size.useUpscaling ? 'AI upscale on — click for native' : 'Click to enable AI upscale'}
+                        >
+                          ✦
+                        </button>
                       </div>
                     );
                   })}
