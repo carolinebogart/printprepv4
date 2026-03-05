@@ -74,6 +74,9 @@ async function Nav() {
 
             {user && (
               <>
+                <a href="/convert" className="text-sm text-gray-600 hover:text-gray-900">
+                  Convert
+                </a>
                 <a href="/history" className="text-sm text-gray-600 hover:text-gray-900">
                   History
                 </a>

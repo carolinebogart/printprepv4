@@ -32,51 +32,113 @@ export async function POST(request) {
     return Response.json({ error: fetchError.message }, { status: 500 });
   }
 
-  if (!expiredImages || expiredImages.length === 0) {
-    return Response.json({ cleaned: 0 });
+  let cleanedImages = 0;
+
+  if (expiredImages && expiredImages.length > 0) {
+    const imageIds = expiredImages.map((img) => img.id);
+
+    // Fetch all output storage paths for these images
+    const { data: outputs } = await supabase
+      .from('processed_outputs')
+      .select('storage_path')
+      .in('image_id', imageIds);
+
+    // Delete output files from storage
+    const outputPaths = (outputs || []).map((o) => o.storage_path).filter(Boolean);
+    if (outputPaths.length > 0) {
+      const { error: outputDeleteErr } = await supabase.storage
+        .from('printprep-images')
+        .remove(outputPaths);
+      if (outputDeleteErr) {
+        console.warn('Output storage deletion partial error:', outputDeleteErr.message);
+      }
+    }
+
+    // Delete original files from storage (thumbnails are intentionally preserved)
+    const originalPaths = expiredImages.map((img) => img.storage_path).filter(Boolean);
+    if (originalPaths.length > 0) {
+      const { error: origDeleteErr } = await supabase.storage
+        .from('printprep-images')
+        .remove(originalPaths);
+      if (origDeleteErr) {
+        console.warn('Original storage deletion partial error:', origDeleteErr.message);
+      }
+    }
+
+    // Mark images as expired (thumbnail_path and metadata stay for history)
+    const { error: updateError } = await supabase
+      .from('images')
+      .update({ expired_at: now })
+      .in('id', imageIds);
+
+    if (updateError) {
+      console.error('Cleanup update error:', updateError.message);
+      return Response.json({ error: updateError.message }, { status: 500 });
+    }
+
+    cleanedImages = expiredImages.length;
+    console.log(`Cleanup: expired ${cleanedImages} image(s)`);
   }
 
-  const imageIds = expiredImages.map((img) => img.id);
+  // ── Conversion jobs cleanup ─────────────────────────────────────────────
+  const { data: expiredJobs } = await supabase
+    .from('conversion_jobs')
+    .select('id, storage_path, user_id, page_count')
+    .lt('expires_at', now)
+    .is('expired_at', null)
+    .limit(50);
 
-  // Fetch all output storage paths for these images
-  const { data: outputs } = await supabase
-    .from('processed_outputs')
-    .select('storage_path')
-    .in('image_id', imageIds);
+  let cleanedJobs = 0;
+  if (expiredJobs && expiredJobs.length > 0) {
+    const jobIds = expiredJobs.map((j) => j.id);
 
-  // Delete output files from storage
-  const outputPaths = (outputs || []).map((o) => o.storage_path).filter(Boolean);
-  if (outputPaths.length > 0) {
-    const { error: outputDeleteErr } = await supabase.storage
-      .from('printprep-images')
-      .remove(outputPaths);
-    if (outputDeleteErr) {
-      console.warn('Output storage deletion partial error:', outputDeleteErr.message);
+    // Fetch all conversion output storage paths
+    const { data: convOutputs } = await supabase
+      .from('conversion_outputs')
+      .select('storage_path')
+      .in('job_id', jobIds);
+
+    const convOutputPaths = (convOutputs || []).map((o) => o.storage_path).filter(Boolean);
+    if (convOutputPaths.length > 0) {
+      const { error: convOutputDeleteErr } = await supabase.storage
+        .from('printprep-images')
+        .remove(convOutputPaths);
+      if (convOutputDeleteErr) {
+        console.warn('Conversion output storage deletion error:', convOutputDeleteErr.message);
+      }
+    }
+
+    // Delete original files + PDF page thumbnails
+    const convPaths = [];
+    for (const job of expiredJobs) {
+      if (job.storage_path) convPaths.push(job.storage_path);
+      // PDF page thumbnails follow the pattern: {userId}/conversions/thumbs/{jobId}-p{n}.jpg
+      for (let p = 1; p <= (job.page_count || 1); p++) {
+        convPaths.push(`${job.user_id}/conversions/thumbs/${job.id}-p${p}.jpg`);
+      }
+    }
+    if (convPaths.length > 0) {
+      const { error: convOrigDeleteErr } = await supabase.storage
+        .from('printprep-images')
+        .remove(convPaths);
+      if (convOrigDeleteErr) {
+        console.warn('Conversion original/thumb storage deletion error:', convOrigDeleteErr.message);
+      }
+    }
+
+    // Mark conversion jobs as expired
+    const { error: jobUpdateError } = await supabase
+      .from('conversion_jobs')
+      .update({ expired_at: now })
+      .in('id', jobIds);
+
+    if (jobUpdateError) {
+      console.warn('Conversion job expiry update error:', jobUpdateError.message);
+    } else {
+      cleanedJobs = expiredJobs.length;
+      console.log(`Cleanup: expired ${cleanedJobs} conversion job(s)`);
     }
   }
 
-  // Delete original files from storage (thumbnails are intentionally preserved)
-  const originalPaths = expiredImages.map((img) => img.storage_path).filter(Boolean);
-  if (originalPaths.length > 0) {
-    const { error: origDeleteErr } = await supabase.storage
-      .from('printprep-images')
-      .remove(originalPaths);
-    if (origDeleteErr) {
-      console.warn('Original storage deletion partial error:', origDeleteErr.message);
-    }
-  }
-
-  // Mark images as expired (thumbnail_path and metadata stay for history)
-  const { error: updateError } = await supabase
-    .from('images')
-    .update({ expired_at: now })
-    .in('id', imageIds);
-
-  if (updateError) {
-    console.error('Cleanup update error:', updateError.message);
-    return Response.json({ error: updateError.message }, { status: 500 });
-  }
-
-  console.log(`Cleanup: expired ${expiredImages.length} image(s)`);
-  return Response.json({ cleaned: expiredImages.length });
+  return Response.json({ cleaned: cleanedImages, cleanedJobs });
 }
