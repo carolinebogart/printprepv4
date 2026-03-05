@@ -85,10 +85,26 @@ function computeQualityData(imgW, imgH) {
       // Upscale row: apply 4× Real-ESRGAN estimate; already-excellent stays excellent
       const upscaleDpi = badge.tier === 'excellent' ? nativeDpi : Math.min(Math.round(nativeDpi * 4), 300);
       const upscaleCol = badge.tier === 'excellent' ? 'excellent' : dpiToCol(upscaleDpi);
-      return { label: s.label, nativeDpi, nativeCol, upscaleDpi, upscaleCol };
+      return { label: s.label, width: s.width, height: s.height, nativeDpi, nativeCol, upscaleDpi, upscaleCol };
     });
     return { key, name: def.name, sizes };
   });
+}
+
+function computeLargestExcellent(qualityData) {
+  const allSizes = qualityData.flatMap((r) => r.sizes);
+  const largest = (filterFn) => allSizes
+    .filter(filterFn)
+    .sort((a, b) => b.width * b.height - a.width * a.height)[0] ?? null;
+  return {
+    withUpscale:    largest((s) => s.upscaleCol === 'excellent'),
+    withoutUpscale: largest((s) => s.nativeCol  === 'excellent'),
+  };
+}
+
+function fmtIn(n) {
+  // Show integer if whole, otherwise up to 2 decimal places without trailing zeros
+  return n % 1 === 0 ? String(n) : parseFloat(n.toFixed(2)).toString();
 }
 
 // Quality columns — best on left, unavailable on right
@@ -135,20 +151,28 @@ function QualityPreviewTable({ qualityData }) {
                 {/* Row 1: native quality */}
                 <tr className="border-b border-gray-100">
                   <td className="px-2 py-2 font-medium text-gray-500 whitespace-nowrap">No upscale</td>
-                  {QUALITY_COLS.map((col) => (
-                    <td key={col.id} className="px-2 py-2 align-top text-gray-700">
-                      <SizeCell sizes={ratio.sizes.filter((s) => s.nativeCol === col.id)} dpiKey="nativeDpi" />
-                    </td>
-                  ))}
+                  {QUALITY_COLS.map((col) => {
+                    const sizes = ratio.sizes.filter((s) => s.nativeCol === col.id);
+                    const isExcellent = col.id === 'excellent';
+                    return (
+                      <td key={col.id} className={`px-2 py-2 align-top ${isExcellent ? 'bg-green-100 text-green-800 font-medium' : 'text-gray-700'}`}>
+                        <SizeCell sizes={sizes} dpiKey="nativeDpi" />
+                      </td>
+                    );
+                  })}
                 </tr>
                 {/* Row 2: with upscaling */}
                 <tr className="bg-blue-50/60">
                   <td className="px-2 py-2 font-medium text-gray-500 whitespace-nowrap">Upscale</td>
-                  {QUALITY_COLS.map((col) => (
-                    <td key={col.id} className="px-2 py-2 align-top text-gray-700">
-                      <SizeCell sizes={ratio.sizes.filter((s) => s.upscaleCol === col.id)} dpiKey="upscaleDpi" />
-                    </td>
-                  ))}
+                  {QUALITY_COLS.map((col) => {
+                    const sizes = ratio.sizes.filter((s) => s.upscaleCol === col.id);
+                    const isExcellent = col.id === 'excellent';
+                    return (
+                      <td key={col.id} className={`px-2 py-2 align-top ${isExcellent ? 'bg-green-100 text-green-800 font-medium' : 'text-gray-700'}`}>
+                        <SizeCell sizes={sizes} dpiKey="upscaleDpi" />
+                      </td>
+                    );
+                  })}
                 </tr>
               </tbody>
             </table>
@@ -301,9 +325,21 @@ export default function UploadForm({ isLoggedIn, isActive, hasCredits }) {
             <p className="font-semibold">
               {resolution.tier.color === 'green' ? '✓' : '⚠'} Resolution: {resolution.tier.name}
             </p>
+            {resolution.qualityData && (() => {
+              const { withUpscale, withoutUpscale } = computeLargestExcellent(resolution.qualityData);
+              return (withUpscale || withoutUpscale) ? (
+                <div className="mt-2 mb-1 text-xs space-y-0.5">
+                  <p className="font-semibold">Largest 300 DPI output:</p>
+                  {withUpscale    && <p>With upscaling: {fmtIn(withUpscale.width)} × {fmtIn(withUpscale.height)} in.</p>}
+                  {withoutUpscale && <p>Without upscaling: {fmtIn(withoutUpscale.width)} × {fmtIn(withoutUpscale.height)} in.</p>}
+                  {!withoutUpscale && <p className="opacity-70">Without upscaling: none at 300 DPI</p>}
+                </div>
+              ) : null;
+            })()}
             {resolution.qualityData && (
               <p className="text-xs mt-1 opacity-90">{computeBadgeMessage(resolution.qualityData)}</p>
             )}
+            <p className="text-xs mt-1.5 opacity-80">Upscaling is easy and automatic — just select it when choosing print sizes after upload.</p>
           </div>
 
           {/* Pixel + print dimensions */}
