@@ -39,6 +39,7 @@ export default function CropTool({
           const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
           return { ...s, useUpscaling: badge.requiresUpscaling || false };
         }),
+        upscaleMode: null, // null | 'native' | 'upscale'
         backgroundColor: '#FFFFFF',
         useShadow: false,
       },
@@ -198,43 +199,74 @@ export default function CropTool({
     }));
   };
 
-  // Toggle upscaling on a single size
-  const toggleSizeUpscale = (ratioKey, sizeIndex) => {
-    setCropStates((prev) => {
-      const sizes = [...prev[ratioKey].sizes];
-      sizes[sizeIndex] = { ...sizes[sizeIndex], useUpscaling: !sizes[sizeIndex].useUpscaling };
-      return { ...prev, [ratioKey]: { ...prev[ratioKey], sizes } };
-    });
-  };
+  // Per-ratio mode toggle: clicking same mode deselects; clicking a new mode switches + selects all
+  const handleRatioModeToggle = (ratioKey, mode) => {
+    const currentMode = cropStates[ratioKey].upscaleMode;
+    const isDeselect = currentMode === mode;
+    const useUpscaling = mode === 'upscale';
 
-  // Set upscaling mode for all non-disabled sizes in a ratio
-  const setRatioUpscaleMode = (ratioKey, useUpscaling) => {
     setCropStates((prev) => {
-      const sizes = prev[ratioKey].sizes.map((s) => {
-        const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
-        if (badge.disabled) return s;
-        return { ...s, useUpscaling };
-      });
-      return { ...prev, [ratioKey]: { ...prev[ratioKey], sizes } };
-    });
-  };
-
-  // Set upscaling mode for all non-disabled sizes in all ratios
-  const setMasterUpscaleMode = (useUpscaling) => {
-    setCropStates((prev) => {
-      const next = { ...prev };
-      for (const key of Object.keys(next)) {
-        next[key] = {
-          ...next[key],
-          sizes: next[key].sizes.map((s) => {
+      const state = prev[ratioKey];
+      const newSizes = isDeselect
+        ? state.sizes.map((s) => ({ ...s, selected: false }))
+        : state.sizes.map((s) => {
             const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
-            if (badge.disabled) return s;
-            return { ...s, useUpscaling };
+            if (badge.disabled) return { ...s, useUpscaling, selected: false };
+            // Native mode: only select sizes with ≥150 DPI natively (Excellent/Good/Fair)
+            const shouldSelect = mode === 'native' ? !badge.requiresUpscaling : true;
+            return { ...s, useUpscaling, selected: shouldSelect };
+          });
+      return {
+        ...prev,
+        [ratioKey]: { ...state, upscaleMode: isDeselect ? null : mode, sizes: newSizes },
+      };
+    });
+
+    if (isDeselect) {
+      if (selectedRatios[ratioKey]) toggleRatio(ratioKey);
+    } else {
+      if (!selectedRatios[ratioKey]) toggleRatio(ratioKey);
+    }
+  };
+
+  // Master mode toggle: applies to all ratios and auto-selects/deselects them
+  const handleMasterUpscaleMode = (mode) => {
+    const useUpscaling = mode === 'upscale';
+
+    setCropStates((prev) => {
+      const next = {};
+      for (const key of Object.keys(prev)) {
+        next[key] = {
+          ...prev[key],
+          upscaleMode: mode,
+          sizes: prev[key].sizes.map((s) => {
+            const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
+            if (badge.disabled) return { ...s, useUpscaling, selected: false };
+            const shouldSelect = mode === 'native' ? !badge.requiresUpscaling : true;
+            return { ...s, useUpscaling, selected: shouldSelect };
           }),
         };
       }
       return next;
     });
+
+    // Auto-select ratios that will have at least one selected size
+    const nextSelected = ratios.reduce((acc, r) => {
+      const hasSizes = r.sizes.some((s) => {
+        const badge = getQualityBadge(originalWidth, originalHeight, s.width, s.height);
+        if (badge.disabled) return false;
+        return mode === 'native' ? !badge.requiresUpscaling : true;
+      });
+      return { ...acc, [r.key]: hasSizes };
+    }, {});
+    setSelectedRatios(nextSelected);
+
+    // Set active ratio to first selected
+    const first = ratios.find((r) => nextSelected[r.key]);
+    if (first && first.key !== activeRatio) {
+      saveCropState();
+      setActiveRatio(first.key);
+    }
   };
 
   // Eyedropper: pick color from image via overlay click
@@ -514,13 +546,13 @@ export default function CropTool({
         {/* Master upscale toggle */}
         <div className="flex gap-1.5 mb-3">
           <button
-            onClick={() => setMasterUpscaleMode(false)}
+            onClick={() => handleMasterUpscaleMode('native')}
             className="flex-1 text-xs py-1 px-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
           >
             All native
           </button>
           <button
-            onClick={() => setMasterUpscaleMode(true)}
+            onClick={() => handleMasterUpscaleMode('upscale')}
             className="flex-1 text-xs py-1 px-2 rounded border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100"
           >
             All AI ✦
@@ -560,77 +592,78 @@ export default function CropTool({
             {/* Size checkboxes — always visible so user sees all options */}
             {
               <div className="ml-6 mt-1 space-y-1">
-                {/* Per-ratio upscale toggle — shown when ratio has any non-disabled sizes */}
+                {/* Per-ratio mode toggle: Native / AI Upscale */}
                 {cropStates[r.key].sizes.some((s) => !getQualityBadge(originalWidth, originalHeight, s.width, s.height).disabled) && (
                   <div className="flex gap-1 mb-1">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setRatioUpscaleMode(r.key, false); }}
-                      className="text-[10px] py-0.5 px-2 rounded border border-gray-200 text-gray-500 hover:bg-gray-50"
-                    >
-                      Native
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setRatioUpscaleMode(r.key, true); }}
-                      className="text-[10px] py-0.5 px-2 rounded border border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100"
-                    >
-                      ✦ Upscale
-                    </button>
+                    {['native', 'upscale'].map((mode) => {
+                      const isActive = cropStates[r.key].upscaleMode === mode;
+                      return (
+                        <button
+                          key={mode}
+                          onClick={(e) => { e.stopPropagation(); handleRatioModeToggle(r.key, mode); }}
+                          className={`text-[10px] py-0.5 px-2 rounded border font-medium ${
+                            isActive
+                              ? mode === 'native'
+                                ? 'border-gray-400 text-gray-700 bg-gray-100'
+                                : 'border-blue-400 text-blue-700 bg-blue-100'
+                              : 'border-gray-200 text-gray-400 bg-white hover:bg-gray-50'
+                          }`}
+                        >
+                          {mode === 'native' ? 'Native' : '✦ Upscale'}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
-                {cropStates[r.key].sizes.map((size, i) => {
-                  const badge = getQualityBadge(originalWidth, originalHeight, size.width, size.height);
-                  const showUpscaleToggle = !badge.disabled && badge.label !== 'Excellent';
-                  const effectiveDpiLabel = size.useUpscaling && !badge.disabled
-                    ? `~${Math.min(badge.dpi * 4, 300)} DPI · AI ✦`
-                    : `${badge.dpi} DPI · ${badge.label}`;
-                  const effectiveBadgeColor = size.useUpscaling && !badge.disabled
-                    ? 'text-blue-700 bg-blue-50 border-blue-200'
-                    : badge.color;
-                  return (
-                    <div
-                      key={size.label}
-                      className={`flex items-center gap-1.5 rounded px-1 -mx-1 cursor-pointer hover:bg-gray-50 ${badge.disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-                      onClick={() => {
-                        if (badge.disabled) return;
-                        // If ratio isn't selected yet, turn it on and switch focus
-                        if (!selectedRatios[r.key]) {
-                          toggleRatio(r.key);
-                        } else if (activeRatio !== r.key) {
-                          switchToRatio(r.key);
-                        }
-                        toggleSize(r.key, i);
-                      }}
-                    >
-                      <span className={`flex items-center gap-1.5 text-xs ${badge.disabled ? 'text-gray-400' : 'text-gray-600'}`}>
-                        <input
-                          type="checkbox"
-                          checked={!!(size.selected && !badge.disabled)}
-                          onChange={() => {}}
-                          disabled={badge.disabled}
-                          className="rounded border-gray-300 pointer-events-none"
-                          tabIndex={-1}
-                        />
-                        {size.label}&quot;
-                      </span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${effectiveBadgeColor}`}>
-                        {effectiveDpiLabel}
-                      </span>
-                      {showUpscaleToggle && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleSizeUpscale(r.key, i); }}
-                          className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${
-                            size.useUpscaling
-                              ? 'border-blue-300 text-blue-700 bg-blue-100'
-                              : 'border-gray-200 text-gray-400 bg-white'
-                          }`}
-                          title={size.useUpscaling ? 'AI upscaling on — click to disable' : 'Click to enable AI upscaling'}
-                        >
-                          ✦
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                {cropStates[r.key].sizes
+                  .map((size, i) => ({ size, i }))
+                  .filter(({ size }) => {
+                    const badge = getQualityBadge(originalWidth, originalHeight, size.width, size.height);
+                    const mode = cropStates[r.key].upscaleMode;
+                    if (badge.disabled) return mode === null; // only show disabled in unfiltered view
+                    if (mode === 'native') return !badge.requiresUpscaling; // ≥150 DPI native
+                    if (mode === 'upscale') return true; // all non-disabled
+                    return true; // no mode: show all
+                  })
+                  .map(({ size, i }) => {
+                    const badge = getQualityBadge(originalWidth, originalHeight, size.width, size.height);
+                    const effectiveDpiLabel = size.useUpscaling && !badge.disabled
+                      ? `~${Math.min(badge.dpi * 4, 300)} DPI · AI ✦`
+                      : `${badge.dpi} DPI · ${badge.label}`;
+                    const effectiveBadgeColor = size.useUpscaling && !badge.disabled
+                      ? 'text-blue-700 bg-blue-50 border-blue-200'
+                      : badge.color;
+                    return (
+                      <div
+                        key={size.label}
+                        className={`flex items-center gap-1.5 rounded px-1 -mx-1 cursor-pointer hover:bg-gray-50 ${badge.disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        onClick={() => {
+                          if (badge.disabled) return;
+                          if (!selectedRatios[r.key]) {
+                            toggleRatio(r.key);
+                          } else if (activeRatio !== r.key) {
+                            switchToRatio(r.key);
+                          }
+                          toggleSize(r.key, i);
+                        }}
+                      >
+                        <span className={`flex items-center gap-1.5 text-xs ${badge.disabled ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <input
+                            type="checkbox"
+                            checked={!!(size.selected && !badge.disabled)}
+                            onChange={() => {}}
+                            disabled={badge.disabled}
+                            className="rounded border-gray-300 pointer-events-none"
+                            tabIndex={-1}
+                          />
+                          {size.label}&quot;
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${effectiveBadgeColor}`}>
+                          {effectiveDpiLabel}
+                        </span>
+                      </div>
+                    );
+                  })}
               </div>
             }
           </div>
