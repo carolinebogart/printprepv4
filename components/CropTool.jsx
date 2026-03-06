@@ -628,6 +628,7 @@ export default function CropTool({
         imageId,
         expiresAt: data.expiresAt,
         count: data.successfulOutputs,
+        warnings: data.warnings || [],
       });
       setProcessing(false);
     } catch {
@@ -1051,6 +1052,13 @@ export default function CropTool({
                       </strong>{' '}
                       — files are deleted after that.
                     </p>
+                  )}
+                  {successData.warnings?.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {successData.warnings.map((w, i) => (
+                        <p key={i} className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1">{w}</p>
+                      ))}
+                    </div>
                   )}
                 </div>
                 <button
