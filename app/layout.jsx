@@ -65,18 +65,19 @@ async function SiteNav() {
       zIndex: 50,
     }}>
       <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '64px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '52px' }}>
 
-          {/* Logo */}
-          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
-            <img src="/allgoodweb-logo.jpg" alt="All Good Web" style={{ height: '40px', width: '40px', borderRadius: '4px', objectFit: 'cover' }} />
+          {/* Logo — large enough to read clearly */}
+          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
+            <img src="/allgoodweb-logo.jpg" alt="All Good Web" style={{ height: '44px', width: '44px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }} />
             <span style={{
               fontFamily: 'var(--font-sub)',
               fontWeight: 700,
-              fontSize: '1.1rem',
+              fontSize: '1rem',
               letterSpacing: '0.08em',
               color: 'var(--agw-cream)',
               textTransform: 'uppercase',
+              lineHeight: 1,
             }}>All Good Web</span>
           </a>
 
@@ -108,7 +109,7 @@ async function SiteNav() {
 
             {user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--agw-steel)', letterSpacing: '0.05em' }}>{user.email}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--agw-steel)', letterSpacing: '0.05em' }}>{user.email}</span>
                 <form action="/api/auth/logout" method="POST">
                   <button type="submit" style={navLinkStyle}>Logout</button>
                 </form>
@@ -126,7 +127,7 @@ async function SiteNav() {
                   background: 'var(--agw-red)',
                   border: '2px solid var(--agw-red)',
                   borderRadius: '2px',
-                  padding: '0.35rem 0.85rem',
+                  padding: '0.3rem 0.85rem',
                   textDecoration: 'none',
                 }}>Try Free →</a>
               </div>
@@ -163,11 +164,11 @@ function SiteFooter() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '2rem', marginBottom: '2.5rem' }}>
-          {/* Brand */}
+          {/* Brand — larger logo in footer */}
           <div style={{ gridColumn: 'span 2' }}>
-            <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', marginBottom: '0.75rem' }}>
-              <img src="/allgoodweb-logo.jpg" alt="All Good Web" style={{ height: '36px', width: '36px', borderRadius: '4px', objectFit: 'cover' }} />
-              <span style={{ fontFamily: 'var(--font-sub)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.08em', color: 'var(--agw-cream)', textTransform: 'uppercase' }}>All Good Web</span>
+            <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '14px', textDecoration: 'none', marginBottom: '1rem' }}>
+              <img src="/allgoodweb-logo.jpg" alt="All Good Web" style={{ height: '64px', width: '64px', borderRadius: '6px', objectFit: 'cover', flexShrink: 0 }} />
+              <span style={{ fontFamily: 'var(--font-sub)', fontWeight: 700, fontSize: '1.1rem', letterSpacing: '0.08em', color: 'var(--agw-cream)', textTransform: 'uppercase', lineHeight: 1.2 }}>All Good Web</span>
             </a>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--agw-steel)', lineHeight: 1.6, maxWidth: '240px' }}>
               Self-service tools for creative sellers. More tools coming soon.

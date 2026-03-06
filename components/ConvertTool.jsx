@@ -133,9 +133,15 @@ export default function ConvertTool() {
         )}
 
         <div
-          className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
-            dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
-          }`}
+          style={{
+            border: dragOver ? '2px dashed var(--agw-red)' : '2px dashed var(--agw-navy)',
+            borderRadius: '8px',
+            padding: '3rem 2rem',
+            textAlign: 'center',
+            cursor: 'pointer',
+            background: dragOver ? 'rgba(212,74,42,0.06)' : 'white',
+            transition: 'border-color 0.15s, background 0.15s',
+          }}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
@@ -149,14 +155,23 @@ export default function ConvertTool() {
             onChange={onFileChange}
           />
           <div className="flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
-              <svg className="w-7 h-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div style={{
+              width: '56px', height: '56px', borderRadius: '50%',
+              background: 'var(--agw-navy)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <svg style={{ width: '26px', height: '26px' }} fill="none" viewBox="0 0 24 24" stroke="var(--agw-gold)" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
               </svg>
             </div>
             <div>
-              <p className="text-base font-medium text-gray-800">Drop a file here, or click to choose</p>
-              <p className="text-sm text-gray-500 mt-1">JPG, PNG, TIFF, WebP, BMP, GIF, PDF · up to 400 MB</p>
+              <p style={{ fontFamily: 'var(--font-sub)', fontWeight: 600, fontSize: '1rem', letterSpacing: '0.04em', color: 'var(--agw-navy)', marginBottom: '0.3rem' }}>
+                Drop a file here, or click to choose
+              </p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: '#888', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                JPG · PNG · TIFF · WebP · BMP · GIF · PDF &nbsp;·&nbsp; up to 400 MB
+              </p>
             </div>
           </div>
         </div>
