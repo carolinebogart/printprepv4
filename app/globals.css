@@ -1,8 +1,24 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Oswald:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Space+Mono:wght@400;700&display=swap');
 
 :root {
   --color-primary: #2563eb;
   --color-primary-hover: #1d4ed8;
+
+  /* All Good Web brand palette */
+  --agw-navy:    #0f2027;
+  --agw-dark:    #1a1a2e;
+  --agw-cream:   #f5e9c8;
+  --agw-cream-dark: #e8d8a8;
+  --agw-red:     #d44a2a;
+  --agw-red-dark:#b33820;
+  --agw-gold:    #e8a32a;
+  --agw-steel:   #7a9eb5;
+
+  --font-display: 'Alfa Slab One', serif;
+  --font-sub:     'Oswald', sans-serif;
+  --font-body:    'Lora', Georgia, serif;
+  --font-mono:    'Space Mono', monospace;
 }
 
 body {
