@@ -18,6 +18,8 @@ export async function POST(request) {
 
   const supabase = createServiceClient();
   const now = new Date().toISOString();
+  const startTime = Date.now();
+  const errors = [];
 
   // Find images past their expiry that haven't been cleaned yet
   const { data: expiredImages, error: fetchError } = await supabase
@@ -51,6 +53,7 @@ export async function POST(request) {
         .remove(outputPaths);
       if (outputDeleteErr) {
         console.warn('Output storage deletion partial error:', outputDeleteErr.message);
+        errors.push({ phase: 'output_storage', error: outputDeleteErr.message });
       }
     }
 
@@ -62,6 +65,7 @@ export async function POST(request) {
         .remove(originalPaths);
       if (origDeleteErr) {
         console.warn('Original storage deletion partial error:', origDeleteErr.message);
+        errors.push({ phase: 'original_storage', error: origDeleteErr.message });
       }
     }
 
@@ -73,6 +77,7 @@ export async function POST(request) {
 
     if (updateError) {
       console.error('Cleanup update error:', updateError.message);
+      errors.push({ phase: 'expired_at_update', error: updateError.message });
       return Response.json({ error: updateError.message }, { status: 500 });
     }
 
@@ -105,6 +110,7 @@ export async function POST(request) {
         .remove(convOutputPaths);
       if (convOutputDeleteErr) {
         console.warn('Conversion output storage deletion error:', convOutputDeleteErr.message);
+        errors.push({ phase: 'conversion_output_storage', error: convOutputDeleteErr.message });
       }
     }
 
@@ -123,6 +129,7 @@ export async function POST(request) {
         .remove(convPaths);
       if (convOrigDeleteErr) {
         console.warn('Conversion original/thumb storage deletion error:', convOrigDeleteErr.message);
+        errors.push({ phase: 'conversion_original_storage', error: convOrigDeleteErr.message });
       }
     }
 
@@ -134,11 +141,26 @@ export async function POST(request) {
 
     if (jobUpdateError) {
       console.warn('Conversion job expiry update error:', jobUpdateError.message);
+      errors.push({ phase: 'conversion_expired_at_update', error: jobUpdateError.message });
     } else {
       cleanedJobs = expiredJobs.length;
       console.log(`Cleanup: expired ${cleanedJobs} conversion job(s)`);
     }
   }
+
+  // Log this cron run to system_events for a permanent audit trail
+  const durationMs = Date.now() - startTime;
+  await supabase.from('system_events').insert({
+    event_type: 'cleanup_run',
+    severity: errors.length > 0 ? 'warning' : 'info',
+    message: `Cleanup: ${cleanedImages} image(s) and ${cleanedJobs} conversion job(s) expired`,
+    details: {
+      images_cleaned: cleanedImages,
+      conversion_jobs_cleaned: cleanedJobs,
+      duration_ms: durationMs,
+      errors: errors.length > 0 ? errors : undefined,
+    },
+  });
 
   return Response.json({ cleaned: cleanedImages, cleanedJobs });
 }
