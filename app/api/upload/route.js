@@ -10,7 +10,7 @@ export const maxDuration = 60; // seconds
 
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'tiff', 'webp', 'bmp'];
 const MAX_FILE_SIZE = 400 * 1024 * 1024; // 400MB
-const MAX_PIXELS = 100_000_000; // ~10,000×10,000 — covers A0 at ~220 DPI
+const MAX_PIXELS = 260_000_000; // ~14,400×18,000 — covers 14400×18000 at 300 DPI
 
 export async function POST(request) {
   try {
@@ -82,7 +82,7 @@ export async function POST(request) {
     if (totalPixels > MAX_PIXELS) {
       const maxDim = Math.round(Math.sqrt(MAX_PIXELS));
       return NextResponse.json(
-        { error: `Image is too large (${metadata.width}×${metadata.height} = ${Math.round(totalPixels / 1e6)}MP). Maximum is ~${maxDim}×${maxDim} pixels (100MP). Please resize your image before uploading.` },
+        { error: `Image is too large (${metadata.width}×${metadata.height} = ${Math.round(totalPixels / 1e6)}MP). Maximum is 260MP (14,400×18,000 px). Please resize your image before uploading.` },
         { status: 400 }
       );
     }
