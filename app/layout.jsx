@@ -65,11 +65,11 @@ async function SiteNav() {
       zIndex: 50,
     }}>
       <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '52px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '68px' }}>
 
-          {/* Logo — large enough to read clearly */}
+          {/* Logo */}
           <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
-            <img src="/allgoodweb-logo.jpg" alt="All Good Web" style={{ height: '44px', width: '44px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }} />
+            <img src="/allgoodweb-logo.jpg" alt="All Good Web" style={{ height: '60px', width: '60px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }} />
             <span style={{
               fontFamily: 'var(--font-sub)',
               fontWeight: 700,
@@ -167,7 +167,7 @@ function SiteFooter() {
           {/* Brand — larger logo in footer */}
           <div style={{ gridColumn: 'span 2' }}>
             <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '14px', textDecoration: 'none', marginBottom: '1rem' }}>
-              <img src="/allgoodweb-logo.jpg" alt="All Good Web" style={{ height: '64px', width: '64px', borderRadius: '6px', objectFit: 'cover', flexShrink: 0 }} />
+              <img src="/allgoodweb-logo.jpg" alt="All Good Web" style={{ height: '96px', width: '96px', borderRadius: '6px', objectFit: 'cover', flexShrink: 0 }} />
               <span style={{ fontFamily: 'var(--font-sub)', fontWeight: 700, fontSize: '1.1rem', letterSpacing: '0.08em', color: 'var(--agw-cream)', textTransform: 'uppercase', lineHeight: 1.2 }}>All Good Web</span>
             </a>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--agw-steel)', lineHeight: 1.6, maxWidth: '240px' }}>
