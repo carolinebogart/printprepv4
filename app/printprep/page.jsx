@@ -7,11 +7,14 @@ export const metadata = {
 };
 
 const ratios = [
-  { ratio: '2:3', sizes: '4×6 · 8×12 · 12×18 · 16×24 · 20×30 · 24×36' },
-  { ratio: '3:4', sizes: '6×8 · 9×12 · 12×16 · 18×24' },
-  { ratio: '4:5', sizes: '8×10 · 16×20 · 24×30' },
-  { ratio: '8:11', sizes: '8×11 · 16×22' },
-  { ratio: 'A-Series', sizes: 'A5 · A4 · A3 · A2 · A1' },
+  { ratio: '2:3', sizes: '4×6 · 6×9 · 8×12 · 10×15 · 12×18 · 16×24 · 20×30 · 24×36 · 28×42 · 32×48 · 36×54 · 40×60' },
+  { ratio: '3:4', sizes: '6×8 · 9×12 · 12×16 · 15×20 · 18×24 · 24×32 · 30×40 · 36×48' },
+  { ratio: '4:5', sizes: '8×10 · 12×15 · 16×20 · 20×25 · 24×30 · 32×40 · 40×50 · 48×60' },
+  { ratio: 'Letter', sizes: '8.5×11' },
+  { ratio: '11×14', sizes: '11×14' },
+  { ratio: '11×17', sizes: '11×17' },
+  { ratio: 'A-Series', sizes: 'A7 · A6 · A5 · A4 · A3 · A2 · A1 · A0' },
+  { ratio: 'Freeform', sizes: 'Custom W×H (px or in)' },
 ];
 
 const features = [
@@ -111,6 +114,9 @@ export default async function PrintPrepPage() {
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: 'var(--agw-navy)', lineHeight: 1.1 }}>
               Every Ratio. Every Size.
             </h2>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: 'var(--agw-steel)', marginTop: '0.8rem', maxWidth: '600px', margin: '0.8rem auto 0' }}>
+              Standard ratios plus a <strong>Custom Size</strong> feature to create any dimension you need.
+            </p>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1px', background: 'var(--agw-navy)', border: '2px solid var(--agw-navy)', borderRadius: '4px', overflow: 'hidden' }}>
@@ -122,7 +128,7 @@ export default async function PrintPrepPage() {
             ))}
           </div>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: '#888', letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center', marginTop: '1rem' }}>
-            Portrait and landscape orientations available for each ratio
+            Portrait and landscape orientations for all standard ratios
           </p>
         </div>
       </section>
