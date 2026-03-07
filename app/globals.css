@@ -141,7 +141,7 @@ body {
 .cropper-view-box {
   outline: 3px solid #fff !important;
   outline-offset: -3px;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 0, 0, 0.3), inset 0 0 0 3px rgba(0, 0, 0, 0.35) !important;
   background-color: var(--crop-bg, #ffffff) !important;
 }
 

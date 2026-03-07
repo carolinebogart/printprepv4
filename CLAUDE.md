@@ -1,7 +1,7 @@
 # PrintPrep — Claude Project Context
 
 ## What This App Does
-SaaS for Etsy digital printable sellers. Upload artwork → select print ratios → adjust crop → download 300 DPI print-ready files. Credit-based: 1 credit = 1 image processed, regardless of how many output sizes are generated.
+SaaS for Etsy digital printable sellers. Upload artwork → select print ratios (or create custom sizes) → adjust crop → download 300 DPI print-ready files. Credit-based: 1 credit = 1 image processed, regardless of how many output sizes are generated. Standard ratios support both portrait and landscape orientations; users can also specify custom dimensions in pixels or inches.
 
 ## Tech Stack
 - **Next.js 15** (App Router), **React 19**, **Tailwind CSS 4**
