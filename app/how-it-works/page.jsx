@@ -23,7 +23,7 @@ export default function HowItWorksPage() {
         <Step
           number="2"
           title="Choose Your Crop"
-          description="Select an aspect ratio and position the crop exactly where you want it. PrintPrep locks the ratio so your artwork fills the frame perfectly — no stretching, no white bars."
+          description="Select an aspect ratio and position the crop exactly where you want it. PrintPrep locks the ratio so your artwork fills the frame perfectly — no stretching, no white bars. You can toggle between portrait and landscape ratios, or create a completely custom size using the Custom Size form."
         />
         <Step
           number="3"
@@ -67,6 +67,10 @@ export default function HowItWorksPage() {
             sizes="A7, A6, A5, A4, A3, A2, A1, A0"
           />
         </div>
+
+        <p className="text-gray-600 mt-6 pt-6 border-t border-gray-200">
+          <strong>Flexible Ratios:</strong> Square images default to portrait, but you can toggle to landscape on the crop page. And if you need a size that's not in the standard list, use the Custom Size feature to specify your own dimensions in pixels or inches.
+        </p>
       </section>
 
       {/* DPI Quality */}

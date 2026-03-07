@@ -34,7 +34,15 @@ export default function FAQPage() {
               <strong>4:5</strong> — 4×5, 8×10, 16×20<br />
               <strong>8:11</strong> — 8×11<br />
               <strong>A-Series</strong> — A7 through A0<br /><br />
-              All sizes are available in both portrait and landscape.
+              All sizes are available in both portrait and landscape. You can also specify a completely custom size (see below).
+            </>
+          }
+        />
+        <FAQItem
+          question="Can I create a custom size that's not in the standard list?"
+          answer={
+            <>
+              Yes! PrintPrep has a <strong>Custom Size</strong> feature at the top of the ratio selector on the crop page. Simply enter your desired width and height (in pixels or inches), and PrintPrep will treat it as its own ratio. The crop box will lock to your custom aspect ratio, and you can zoom and pan the image as usual. This is perfect for unusual formats, background-knockout images you want to upscale, or any size that doesn&apos;t fit the standard templates.
             </>
           }
         />
