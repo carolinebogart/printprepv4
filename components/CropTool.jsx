@@ -81,10 +81,11 @@ export default function CropTool({
 
   // (DPI badges now use original image dimensions directly)
 
-  // Get ordered list of selected ratios
+  // Get ordered list of selected ratios (including custom if confirmed and selected)
   const selectedRatioKeys = ratios
     .filter((r) => selectedRatios[r.key])
-    .map((r) => r.key);
+    .map((r) => r.key)
+    .concat(customSize.confirmed && selectedRatios.custom ? ['custom'] : []);
 
   const currentIndex = selectedRatioKeys.indexOf(activeRatio);
 
