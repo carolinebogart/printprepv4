@@ -299,7 +299,7 @@ export default function CropTool({
     setSelectedRatios((prev) => ({ ...prev, [ratioKey]: false }));
   };
 
-  // Select all non-disabled sizes across all ratios
+  // Select all non-disabled sizes across all ratios (including custom if confirmed)
   const selectAllGlobal = () => {
     setCropStates((prev) => {
       const next = {};
@@ -314,17 +314,20 @@ export default function CropTool({
       }
       return next;
     });
-    setSelectedRatios(
-      ratios.reduce((acc, r) => {
-        const hasSelectable = r.sizes.some(
-          (s) => !getQualityBadge(originalWidth, originalHeight, s.width, s.height).disabled
-        );
-        return { ...acc, [r.key]: hasSelectable };
-      }, {})
-    );
+    const newSelected = ratios.reduce((acc, r) => {
+      const hasSelectable = r.sizes.some(
+        (s) => !getQualityBadge(originalWidth, originalHeight, s.width, s.height).disabled
+      );
+      return { ...acc, [r.key]: hasSelectable };
+    }, {});
+    // Include custom if confirmed
+    if (customSize.confirmed && cropStates.custom) {
+      newSelected.custom = true;
+    }
+    setSelectedRatios(newSelected);
   };
 
-  // Select (or deselect if already all selected) the largest non-disabled size in each ratio
+  // Select (or deselect if already all selected) the largest non-disabled size in each ratio (including custom if confirmed)
   const selectLargestGlobal = () => {
     // Find the largest non-disabled size index for each ratio
     const largestIdxByKey = {};
@@ -339,10 +342,14 @@ export default function CropTool({
       largestIdxByKey[r.key] = idx;
     }
     // Check if all largest sizes are already selected (to toggle off)
-    const allLargestSelected = ratios.every((r) => {
+    let allLargestSelected = ratios.every((r) => {
       const idx = largestIdxByKey[r.key];
       return idx === -1 || cropStates[r.key].sizes[idx].selected;
     });
+    // Also check custom if confirmed
+    if (customSize.confirmed && cropStates.custom) {
+      allLargestSelected = allLargestSelected && cropStates.custom.sizes[0]?.selected;
+    }
     const newSelected = !allLargestSelected;
     setCropStates((prev) => {
       const next = {};
@@ -353,22 +360,32 @@ export default function CropTool({
           sizes: prev[r.key].sizes.map((s, i) => ({ ...s, selected: i === idx ? newSelected : s.selected })),
         };
       }
+      // Also update custom if confirmed
+      if (customSize.confirmed && prev.custom) {
+        next.custom = {
+          ...prev.custom,
+          sizes: prev.custom.sizes.map((s, i) => ({ ...s, selected: i === 0 ? newSelected : s.selected })),
+        };
+      }
       return next;
     });
-    setSelectedRatios(
-      ratios.reduce((acc, r) => {
-        const idx = largestIdxByKey[r.key];
-        const willHaveSelection = newSelected && idx !== -1;
-        // Keep existing ratio selection or set based on whether largest is now selected
-        const anyOtherSelected = idx === -1
-          ? false
-          : cropStates[r.key].sizes.some((s, i) => i !== idx && s.selected);
-        return { ...acc, [r.key]: willHaveSelection || anyOtherSelected };
-      }, {})
-    );
+    const newRatioSelected = ratios.reduce((acc, r) => {
+      const idx = largestIdxByKey[r.key];
+      const willHaveSelection = newSelected && idx !== -1;
+      // Keep existing ratio selection or set based on whether largest is now selected
+      const anyOtherSelected = idx === -1
+        ? false
+        : cropStates[r.key].sizes.some((s, i) => i !== idx && s.selected);
+      return { ...acc, [r.key]: willHaveSelection || anyOtherSelected };
+    }, {});
+    // Also handle custom if confirmed
+    if (customSize.confirmed) {
+      newRatioSelected.custom = newSelected;
+    }
+    setSelectedRatios(newRatioSelected);
   };
 
-  // Deselect all sizes across all ratios
+  // Deselect all sizes across all ratios (including custom if confirmed)
   const selectNoneGlobal = () => {
     setCropStates((prev) => {
       const next = {};
@@ -380,7 +397,12 @@ export default function CropTool({
       }
       return next;
     });
-    setSelectedRatios(ratios.reduce((acc, r) => ({ ...acc, [r.key]: false }), {}));
+    const newSelected = ratios.reduce((acc, r) => ({ ...acc, [r.key]: false }), {});
+    // Also deselect custom if it exists
+    if (customSize.confirmed) {
+      newSelected.custom = false;
+    }
+    setSelectedRatios(newSelected);
   };
 
   // Eyedropper: pick color from image via overlay click
