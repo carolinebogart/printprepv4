@@ -15,23 +15,22 @@ export default function CropTool({
   originalHeight,
   originalRatio,
   orientation,
-  ratios,
+  portraitRatios,
+  landscapeRatios,
 }) {
   const router = useRouter();
   const cropperRef = useRef(null);
   const targetCropBoxRef = useRef(null);
 
-  // Which ratios are selected — start with none selected
-  const [selectedRatios, setSelectedRatios] = useState(() =>
-    ratios.reduce((acc, r) => ({ ...acc, [r.key]: false }), {})
-  );
+  // Current orientation: can toggle between portrait and landscape
+  const [currentOrientation, setCurrentOrientation] = useState(orientation);
 
-  // Current ratio being edited
-  const [activeRatio, setActiveRatio] = useState(null);
+  // Derive active ratio list based on current orientation
+  const ratios = currentOrientation === 'landscape' ? landscapeRatios : portraitRatios;
 
-  // Per-ratio crop state
-  const [cropStates, setCropStates] = useState(() =>
-    ratios.reduce((acc, r) => {
+  // Helper to initialize crop states for a ratio list
+  const initCropStates = (ratioList) =>
+    ratioList.reduce((acc, r) => {
       return {
         ...acc,
         [r.key]: {
@@ -47,8 +46,23 @@ export default function CropTool({
           useShadow: false,
         },
       };
-    }, {})
+    }, {});
+
+  // Which ratios are selected — start with none selected
+  const [selectedRatios, setSelectedRatios] = useState(() =>
+    initCropStates(ratios)
   );
+
+  // Current ratio being edited
+  const [activeRatio, setActiveRatio] = useState(null);
+
+  // Per-ratio crop state
+  const [cropStates, setCropStates] = useState(() =>
+    initCropStates(ratios)
+  );
+
+  // Custom size state: { width: number, height: number, unit: 'px' | 'in', confirmed: false }
+  const [customSize, setCustomSize] = useState({ width: null, height: null, unit: 'px', confirmed: false });
 
   // Global view filter: 'native' shows sizes with useUpscaling=false, 'upscale' shows useUpscaling=true
   const [masterView, setMasterView] = useState('native');
@@ -514,6 +528,110 @@ export default function CropTool({
     return () => el.removeEventListener('wheel', handleCropperWheel);
   }, [handleCropperWheel]);
 
+  // Toggle between portrait and landscape orientation
+  const handleOrientationToggle = useCallback(() => {
+    saveCropState();
+    const newOrientation = currentOrientation === 'landscape' ? 'portrait' : 'landscape';
+    const newRatios = newOrientation === 'landscape' ? landscapeRatios : portraitRatios;
+
+    // Reset all selections and crop states for the new orientation
+    setCurrentOrientation(newOrientation);
+    // Reset selectedRatios to match new ratios structure
+    setSelectedRatios(newRatios.reduce((acc, r) => ({ ...acc, [r.key]: false }), {}));
+    setActiveRatio(null);
+    setCropStates(initCropStates(newRatios));
+  }, [currentOrientation, portraitRatios, landscapeRatios, saveCropState, initCropStates]);
+
+  // Handle custom size confirmation
+  const handleConfirmCustomSize = useCallback(() => {
+    if (!customSize.width || !customSize.height) {
+      alert('Please enter both width and height');
+      return;
+    }
+
+    const w = parseFloat(customSize.width);
+    const h = parseFloat(customSize.height);
+    if (!w || !h || w <= 0 || h <= 0) {
+      alert('Width and height must be positive numbers');
+      return;
+    }
+
+    // Validate max dimensions
+    const maxPx = 18000;
+    const maxIn = 60;
+    if (customSize.unit === 'px') {
+      if (w > maxPx || h > maxPx) {
+        alert(`Maximum pixel dimension is ${maxPx}px`);
+        return;
+      }
+    } else {
+      if (w > maxIn || h > maxIn) {
+        alert(`Maximum inch dimension is ${maxIn}in`);
+        return;
+      }
+    }
+
+    // Convert to inches
+    const widthIn = customSize.unit === 'px' ? w / 300 : w;
+    const heightIn = customSize.unit === 'px' ? h / 300 : h;
+    const ratio = w / h;
+
+    // Create/update custom ratio entry
+    const label = `${customSize.width}×${customSize.height} ${customSize.unit}`;
+    const newRatios = [
+      {
+        key: 'custom',
+        name: 'Custom Size',
+        ratio,
+        isCustom: true,
+        sizes: [{ width: widthIn, height: heightIn, label }],
+      },
+      ...ratios,
+    ];
+
+    // Add custom to crop states
+    setCropStates((prev) => ({
+      custom: {
+        canvasData: null,
+        cropBoxData: null,
+        sizes: [{ width: widthIn, height: heightIn, label, useUpscaling: null, selected: false }],
+        upscaleMode: null,
+        backgroundColor: '#FFFFFF',
+        useShadow: false,
+      },
+      ...prev,
+    }));
+
+    // Add to selected ratios (but don't auto-activate)
+    setSelectedRatios((prev) => ({ ...prev, custom: false }));
+
+    // Mark as confirmed so we don't re-render the input form
+    setCustomSize((prev) => ({ ...prev, confirmed: true }));
+  }, [customSize, ratios]);
+
+  // Handle custom size change
+  const handleCustomSizeChange = useCallback((field, value) => {
+    setCustomSize((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  // Reset custom size
+  const handleResetCustomSize = useCallback(() => {
+    setCustomSize({ width: null, height: null, unit: 'px', confirmed: false });
+    setCropStates((prev) => {
+      const newStates = { ...prev };
+      delete newStates.custom;
+      return newStates;
+    });
+    setSelectedRatios((prev) => {
+      const newSelected = { ...prev };
+      delete newSelected.custom;
+      return newSelected;
+    });
+    if (activeRatio === 'custom') {
+      setActiveRatio(null);
+    }
+  }, [activeRatio]);
+
   // Generate all outputs
   const handleGenerate = async () => {
     saveCropState();
@@ -674,7 +792,76 @@ export default function CropTool({
       <div className="flex flex-1 min-h-0">
       {/* Left sidebar — ratio selection */}
       <div className="w-72 bg-white border-r border-gray-200 overflow-y-auto p-4 flex-shrink-0">
-        <h2 className="font-semibold text-gray-900 mb-2">Select Ratios</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold text-gray-900">Select Ratios</h2>
+          <div className="flex gap-1">
+            <button
+              onClick={() => handleOrientationToggle()}
+              className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+              title="Toggle between portrait and landscape orientation"
+            >
+              {currentOrientation === 'portrait' ? '↔' : '↕'} {currentOrientation === 'portrait' ? 'Portrait' : 'Landscape'}
+            </button>
+          </div>
+        </div>
+
+        {/* Custom Size Form — at the top */}
+        <div className="mb-3 pb-3 border-b border-gray-200">
+          <div className="text-xs font-semibold text-gray-700 mb-1.5">Custom Size</div>
+          <div className="space-y-1.5">
+            <div className="flex gap-1">
+              <input
+                type="number"
+                placeholder="Width"
+                value={customSize.width || ''}
+                onChange={(e) => handleCustomSizeChange('width', e.target.value)}
+                disabled={customSize.confirmed}
+                className="w-16 text-xs px-2 py-1 rounded border border-gray-300 disabled:bg-gray-50"
+              />
+              <span className="text-xs text-gray-500 py-1">×</span>
+              <input
+                type="number"
+                placeholder="Height"
+                value={customSize.height || ''}
+                onChange={(e) => handleCustomSizeChange('height', e.target.value)}
+                disabled={customSize.confirmed}
+                className="w-16 text-xs px-2 py-1 rounded border border-gray-300 disabled:bg-gray-50"
+              />
+              <div className="flex gap-0.5 ml-auto">
+                {['px', 'in'].map((u) => (
+                  <button
+                    key={u}
+                    onClick={() => handleCustomSizeChange('unit', u)}
+                    disabled={customSize.confirmed}
+                    className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${
+                      customSize.unit === u
+                        ? 'border-gray-400 text-gray-700 bg-gray-100'
+                        : 'border-gray-200 text-gray-400 bg-white hover:bg-gray-50'
+                    } disabled:opacity-50`}
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {customSize.confirmed ? (
+              <button
+                onClick={handleResetCustomSize}
+                className="w-full text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 bg-green-50 border-green-300 text-green-700"
+              >
+                ✓ Custom size set — Edit
+              </button>
+            ) : (
+              <button
+                onClick={handleConfirmCustomSize}
+                disabled={!customSize.width || !customSize.height}
+                className="w-full text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Set Custom Size
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Global view filter */}
         <div className="flex gap-1.5 mb-2">
@@ -719,10 +906,15 @@ export default function CropTool({
           </button>
         </div>
 
-        {ratios.map((r) => {
-          const allSizesDisabled = cropStates[r.key].sizes.every((size) =>
-            getQualityBadge(originalWidth, originalHeight, size.width, size.height).disabled
-          );
+        {/* Build the full ratio list including custom if confirmed */}
+        {(() => {
+          const ratiosWithCustom = customSize.confirmed && cropStates.custom
+            ? [{ key: 'custom', name: 'Custom Size', ratio: (cropStates.custom.sizes[0]?.width || 1) / (cropStates.custom.sizes[0]?.height || 1), isCustom: true }, ...ratios]
+            : ratios;
+          return ratiosWithCustom.map((r) => {
+            const allSizesDisabled = cropStates[r.key].sizes.every((size) =>
+              getQualityBadge(originalWidth, originalHeight, size.width, size.height).disabled
+            );
           return (
           <div key={r.key} className="mb-3">
             <div
@@ -865,7 +1057,8 @@ export default function CropTool({
             }
           </div>
         );
-        })}
+          });
+        })()}
 
         {/* Background options — always visible */}
         <div className="mt-6 pt-4 border-t border-gray-200">

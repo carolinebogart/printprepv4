@@ -1,9 +1,18 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getRatiosForOrientation } from '@/lib/output-sizes';
+import { getRatiosForOrientation, PORTRAIT_RATIOS, LANDSCAPE_RATIOS } from '@/lib/output-sizes';
 import CropTool from '@/components/CropTool';
 
 export const dynamic = 'force-dynamic';
+
+function buildRatioList(ratiosObj) {
+  return Object.entries(ratiosObj).map(([key, val]) => ({
+    key,
+    name: val.name,
+    ratio: val.ratio,
+    sizes: val.sizes.map((s, i, arr) => ({ ...s, selected: i === arr.length - 1 })),
+  }));
+}
 
 export default async function CropPage({ searchParams }) {
   const { imageId } = await searchParams;
@@ -30,14 +39,9 @@ export default async function CropPage({ searchParams }) {
 
   if (!signedUrlData?.signedUrl) redirect('/');
 
-  // Get available ratios
-  const ratios = getRatiosForOrientation(image.orientation);
-  const ratioList = Object.entries(ratios).map(([key, val]) => ({
-    key,
-    name: val.name,
-    ratio: val.ratio,
-    sizes: val.sizes.map((s, i, arr) => ({ ...s, selected: i === arr.length - 1 })),
-  }));
+  // Build both ratio lists
+  const portraitRatios = buildRatioList(PORTRAIT_RATIOS);
+  const landscapeRatios = buildRatioList(LANDSCAPE_RATIOS);
 
   return (
     <div className="h-[calc(100vh-8rem)] my-4">
@@ -49,7 +53,8 @@ export default async function CropPage({ searchParams }) {
         originalHeight={image.height}
         originalRatio={image.aspect_ratio}
         orientation={image.orientation}
-        ratios={ratioList}
+        portraitRatios={portraitRatios}
+        landscapeRatios={landscapeRatios}
       />
     </div>
   );
