@@ -1,3 +1,6 @@
+import { createClient } from '@/lib/supabase/server';
+import UploadForm from '@/components/UploadForm';
+
 export const metadata = {
   title: 'PrintPrep — Resize Artwork for Every Print Format',
   description: 'Upload once, get every print size at 300 DPI. Built for Etsy digital printable sellers. 2:3, 3:4, 4:5, 8:11, A-Series and more.',
@@ -44,7 +47,36 @@ const features = [
   },
 ];
 
-export default function PrintPrepPage() {
+export default async function PrintPrepPage() {
+  // Auth check + subscription fetch
+  let user = null;
+  let subscription = null;
+
+  try {
+    const supabase = await createClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    user = authUser;
+
+    if (user) {
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('credits_total, credits_used, plan_name, status')
+        .eq('user_id', user.id)
+        .single();
+      subscription = sub;
+    }
+  } catch {
+    // Not authenticated — fine
+  }
+
+  const creditsRemaining = subscription
+    ? Math.max(0, subscription.credits_total - subscription.credits_used)
+    : 0;
+  const isLoggedIn = !!user;
+  const isActive = subscription?.status === 'active' ||
+    (subscription?.status === 'cancelled' && creditsRemaining > 0);
+  const hasCredits = creditsRemaining > 0;
+
   return (
     <div style={{ background: 'var(--agw-cream)', minHeight: '100vh' }}>
 
@@ -56,13 +88,22 @@ export default function PrintPrepPage() {
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--agw-gold)' }}>Resize art for every print format · from $29/mo</span>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <a href="/auth/register" style={{ fontFamily: 'var(--font-sub)', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--agw-cream)', background: 'var(--agw-red)', padding: '0.35rem 0.9rem', textDecoration: 'none', borderRadius: '2px' }}>Start Free →</a>
+            {!isLoggedIn && (
+              <a href="/auth/register" style={{ fontFamily: 'var(--font-sub)', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--agw-cream)', background: 'var(--agw-red)', padding: '0.35rem 0.9rem', textDecoration: 'none', borderRadius: '2px' }}>Start Free →</a>
+            )}
             <a href="/pricing" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--agw-steel)', textDecoration: 'none' }}>Pricing</a>
           </div>
         </div>
       </section>
 
-      {/* Ratios + sizes */}
+      {/* Upload Section */}
+      {isLoggedIn ? (
+        <UploadSection isLoggedIn={isLoggedIn} isActive={isActive} hasCredits={hasCredits} />
+      ) : (
+        <UploadSection isLoggedIn={false} isActive={false} hasCredits={false} />
+      )}
+
+      {/* Ratios + sizes section */}
       <section style={{ background: 'var(--agw-cream)', padding: '5rem 1.5rem', borderBottom: '4px solid var(--agw-navy)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
@@ -155,5 +196,182 @@ export default function PrintPrepPage() {
       </section>
 
     </div>
+  );
+}
+
+/* ─── UPLOAD SECTION ────────────────────────────────────────────────── */
+function UploadSection({ isLoggedIn, isActive, hasCredits }) {
+  if (isLoggedIn && isActive && hasCredits) {
+    // Show the upload form
+    return (
+      <section style={{ background: 'var(--agw-navy)', borderBottom: '3px solid var(--agw-gold)', padding: '3rem 1.5rem' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <div style={{ marginBottom: '2rem' }}>
+            <h2 style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'clamp(1.8rem, 4vw, 2.5rem)',
+              color: 'var(--agw-cream)',
+              lineHeight: 1.1,
+              marginBottom: '0.5rem',
+            }}>Upload Your Artwork</h2>
+            <p style={{
+              fontFamily: 'var(--font-sub)',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: 'var(--agw-gold)',
+            }}>One image → every print size at 300 DPI</p>
+          </div>
+          <UploadForm isLoggedIn={true} isActive={true} hasCredits={true} />
+        </div>
+      </section>
+    );
+  }
+
+  if (isLoggedIn && isActive && !hasCredits) {
+    // No credits
+    return (
+      <section style={{ background: 'var(--agw-navy)', borderBottom: '3px solid var(--agw-gold)', padding: '3rem 1.5rem' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
+          <div style={{
+            background: 'rgba(232,163,42,0.1)',
+            border: '2px solid var(--agw-gold)',
+            borderRadius: '4px',
+            padding: '2rem',
+          }}>
+            <h2 style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '1.8rem',
+              color: 'var(--agw-cream)',
+              marginBottom: '0.75rem',
+            }}>No Credits Remaining</h2>
+            <p style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '1rem',
+              color: 'var(--agw-steel)',
+              lineHeight: 1.6,
+              marginBottom: '1.5rem',
+            }}>You've used all your credits. Upgrade your plan to continue processing images.</p>
+            <a href="/pricing" style={{
+              fontFamily: 'var(--font-sub)',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: 'var(--agw-red)',
+              background: 'var(--agw-cream)',
+              padding: '0.85rem 2rem',
+              textDecoration: 'none',
+              borderRadius: '2px',
+              border: '2px solid var(--agw-cream)',
+              display: 'inline-block',
+            }}>View Plans →</a>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (isLoggedIn && !isActive) {
+    // No active subscription
+    return (
+      <section style={{ background: 'var(--agw-navy)', borderBottom: '3px solid var(--agw-gold)', padding: '3rem 1.5rem' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
+          <div style={{
+            background: 'rgba(232,163,42,0.1)',
+            border: '2px solid var(--agw-gold)',
+            borderRadius: '4px',
+            padding: '2rem',
+          }}>
+            <h2 style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '1.8rem',
+              color: 'var(--agw-cream)',
+              marginBottom: '0.75rem',
+            }}>No Active Subscription</h2>
+            <p style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '1rem',
+              color: 'var(--agw-steel)',
+              lineHeight: 1.6,
+              marginBottom: '1.5rem',
+            }}>Choose a plan to start processing your images at 300 DPI.</p>
+            <a href="/pricing" style={{
+              fontFamily: 'var(--font-sub)',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: 'var(--agw-red)',
+              background: 'var(--agw-cream)',
+              padding: '0.85rem 2rem',
+              textDecoration: 'none',
+              borderRadius: '2px',
+              border: '2px solid var(--agw-cream)',
+              display: 'inline-block',
+            }}>View Plans →</a>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Not logged in
+  return (
+    <section style={{ background: 'var(--agw-navy)', borderBottom: '3px solid var(--agw-gold)', padding: '3rem 1.5rem' }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
+        <div style={{
+          background: 'rgba(232,163,42,0.1)',
+          border: '2px solid var(--agw-gold)',
+          borderRadius: '4px',
+          padding: '2rem',
+        }}>
+          <h2 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '1.8rem',
+            color: 'var(--agw-cream)',
+            marginBottom: '0.75rem',
+          }}>Ready to Process?</h2>
+          <p style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: '1rem',
+            color: 'var(--agw-steel)',
+            lineHeight: 1.6,
+            marginBottom: '1.5rem',
+          }}>Sign in to upload your artwork, or create a new account to start for free.</p>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a href="/auth/login" style={{
+              fontFamily: 'var(--font-sub)',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: 'var(--agw-red)',
+              background: 'var(--agw-cream)',
+              padding: '0.85rem 2rem',
+              textDecoration: 'none',
+              borderRadius: '2px',
+              border: '2px solid var(--agw-cream)',
+              display: 'inline-block',
+            }}>Sign In</a>
+            <a href="/auth/register" style={{
+              fontFamily: 'var(--font-sub)',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: 'var(--agw-cream)',
+              background: 'transparent',
+              padding: '0.85rem 2rem',
+              textDecoration: 'none',
+              borderRadius: '2px',
+              border: '2px solid rgba(245,233,200,0.5)',
+              display: 'inline-block',
+            }}>Create Account →</a>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
