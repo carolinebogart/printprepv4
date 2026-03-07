@@ -28,6 +28,7 @@ npm run lint
 - `sharp` must stay in `serverExternalPackages` in `next.config.mjs` or SSR breaks
 - Server action body size limit is 50MB in `next.config.mjs` (separate from upload limit)
 - Stripe webhook secret changes on every `stripe listen` restart — update `.env.local` and restart dev server
+- `REMOVEBG_API_KEY` required for background removal feature — get from remove.bg dashboard (free tier: 50/month)
 
 ## Conventions
 - Path alias: `@/*` → `./` (jsconfig.json)

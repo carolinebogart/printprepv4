@@ -1,6 +1,6 @@
 import { createServerClient } from '../../../lib/supabase/server.js';
 import { createServiceClient } from '../../../lib/supabase/service.js';
-import { extractCrop, resizeToTarget, upscaleCropWithAI } from '../../../lib/image-processor.js';
+import { extractCrop, resizeToTarget, upscaleCropWithAI, removeBackground } from '../../../lib/image-processor.js';
 import { generateOutputFilename } from '../../../lib/output-sizes.js';
 import { hasCredits, canUsePng, getRetentionDays } from '../../../lib/credits.js';
 import { logSystemEvent } from '../../../lib/system-events.js';
@@ -26,7 +26,7 @@ export async function POST(request) {
     }
 
     // Parse request body
-    const { imageId, cropConfigs } = await request.json();
+    const { imageId, cropConfigs, removeBackground: removeBackgroundRequested = false } = await request.json();
 
     // Check PNG permission before doing any work
     const hasPngRequest = Array.isArray(cropConfigs) &&
@@ -127,9 +127,32 @@ export async function POST(request) {
       }
     }
 
+    // Phase 1.7: Background removal (applied to ALL crop buffers if requested)
+    let backgroundRemovalWarning = null;
+    if (removeBackgroundRequested) {
+      for (const [ratioKey, cropResult] of cropResults.entries()) {
+        try {
+          cropResult.croppedBuffer = await removeBackground(cropResult.croppedBuffer);
+        } catch (error) {
+          console.error(`[removebg] Background removal failed for ratio ${ratioKey}:`, error.message);
+          logSystemEvent({
+            eventType: 'background_removal_failure',
+            severity: 'warning',
+            message: `remove.bg failed for ratio ${ratioKey}: ${error.message}`,
+            details: { ratioKey, errorMessage: error.message, ...eventContext },
+            userId: user.id,
+            imageId,
+          });
+          backgroundRemovalWarning = 'Background removal failed and was skipped — standard outputs were generated instead.';
+          // croppedBuffer unchanged — continue with original
+        }
+      }
+    }
+
     // Phase 2: Resize each crop → upload → release
     for (const config of cropConfigs) {
-      const { ratioKey, sizes, backgroundColor = '#FFFFFF', useShadow = false } = config;
+      const { ratioKey, sizes, backgroundColor: rawBgColor = '#FFFFFF', useShadow = false } = config;
+      const backgroundColor = removeBackgroundRequested ? 'transparent' : rawBgColor;
 
       let cropResult = cropResults.get(ratioKey);
       if (!cropResult) continue; // crop extraction failed above
@@ -334,7 +357,10 @@ export async function POST(request) {
       totalOutputs: outputs.length,
       successfulOutputs: successCount,
       outputs,
-      warnings: Array.from(upscaleWarnings.values()),
+      warnings: [
+        ...Array.from(upscaleWarnings.values()),
+        ...(backgroundRemovalWarning ? [backgroundRemovalWarning] : []),
+      ],
     });
   } catch (err) {
     const mem = process.memoryUsage();

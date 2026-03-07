@@ -67,6 +67,9 @@ export default function CropTool({
   // Global view filter: 'native' shows sizes with useUpscaling=false, 'upscale' shows useUpscaling=true
   const [masterView, setMasterView] = useState('native');
 
+  // Background removal toggle
+  const [removeBg, setRemoveBg] = useState(false);
+
   // Eyedropper
   const [eyedropperActive, setEyedropperActive] = useState(false);
 
@@ -750,7 +753,7 @@ export default function CropTool({
       const res = await fetch('/api/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageId, cropConfigs: allCropData }),
+        body: JSON.stringify({ imageId, cropConfigs: allCropData, removeBackground: removeBg }),
       });
 
       const data = await res.json();
@@ -1087,6 +1090,21 @@ export default function CropTool({
         <div className="mt-6 pt-4 border-t border-gray-200">
           <h3 className="text-sm font-semibold text-gray-900 mb-2">Background</h3>
 
+          {/* Remove background toggle */}
+          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer mb-3">
+            <input
+              type="checkbox"
+              checked={removeBg}
+              onChange={(e) => setRemoveBg(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            Remove background
+            <span className="text-xs text-gray-400 ml-1">(remove.bg)</span>
+          </label>
+
+          {removeBg ? (
+            <p className="text-xs text-gray-500 italic">Output will be a PNG with transparent background.</p>
+          ) : (
           <div className="flex items-center gap-2 mb-2">
             <input
               type="color"
@@ -1141,6 +1159,7 @@ export default function CropTool({
             />
             Drop shadow
           </label>
+          )}
         </div>
 
         {/* Generate button */}
