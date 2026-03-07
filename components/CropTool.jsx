@@ -1105,60 +1105,62 @@ export default function CropTool({
           {removeBg ? (
             <p className="text-xs text-gray-500 italic">Output will be a PNG with transparent background.</p>
           ) : (
-          <div className="flex items-center gap-2 mb-2">
-            <input
-              type="color"
-              value={(activeState?.backgroundColor ?? '#FFFFFF') === 'transparent' ? '#ffffff' : (activeState?.backgroundColor ?? '#FFFFFF')}
-              onChange={(e) => activeRatio && setBackgroundColor(activeRatio, e.target.value)}
-              className={`w-8 h-8 rounded border border-gray-300 ${activeRatio ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
-              disabled={!activeRatio}
-            />
-            <div
-              className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center cursor-pointer text-xs"
-              style={{
-                background: (activeState?.backgroundColor ?? '#FFFFFF') === 'transparent'
-                  ? 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 12px 12px'
-                  : (activeState?.backgroundColor ?? '#FFFFFF'),
-              }}
-              title="Current color"
-            />
-          </div>
+            <>
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="color"
+                value={(activeState?.backgroundColor ?? '#FFFFFF') === 'transparent' ? '#ffffff' : (activeState?.backgroundColor ?? '#FFFFFF')}
+                onChange={(e) => activeRatio && setBackgroundColor(activeRatio, e.target.value)}
+                className={`w-8 h-8 rounded border border-gray-300 ${activeRatio ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                disabled={!activeRatio}
+              />
+              <div
+                className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center cursor-pointer text-xs"
+                style={{
+                  background: (activeState?.backgroundColor ?? '#FFFFFF') === 'transparent'
+                    ? 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 12px 12px'
+                    : (activeState?.backgroundColor ?? '#FFFFFF'),
+                }}
+                title="Current color"
+              />
+            </div>
 
-          <div className="flex gap-2 mb-3">
-            <button
-              onClick={() => activeRatio && setEyedropperActive(!eyedropperActive)}
-              disabled={!activeRatio}
-              className={`text-xs px-2 py-1 rounded border ${
-                eyedropperActive
-                  ? 'bg-blue-100 border-blue-300 text-blue-700'
-                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-              } ${!activeRatio ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              🔍 Eyedropper
-            </button>
-            <button
-              onClick={() => activeRatio && setBackgroundColor(activeRatio, 'transparent')}
-              disabled={!activeRatio}
-              className={`text-xs px-2 py-1 rounded border ${
-                activeState?.backgroundColor === 'transparent'
-                  ? 'bg-blue-100 border-blue-300 text-blue-700'
-                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-              } ${!activeRatio ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              Transparent
-            </button>
-          </div>
+            <div className="flex gap-2 mb-3">
+              <button
+                onClick={() => activeRatio && setEyedropperActive(!eyedropperActive)}
+                disabled={!activeRatio}
+                className={`text-xs px-2 py-1 rounded border ${
+                  eyedropperActive
+                    ? 'bg-blue-100 border-blue-300 text-blue-700'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                } ${!activeRatio ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                🔍 Eyedropper
+              </button>
+              <button
+                onClick={() => activeRatio && setBackgroundColor(activeRatio, 'transparent')}
+                disabled={!activeRatio}
+                className={`text-xs px-2 py-1 rounded border ${
+                  activeState?.backgroundColor === 'transparent'
+                    ? 'bg-blue-100 border-blue-300 text-blue-700'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                } ${!activeRatio ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                Transparent
+              </button>
+            </div>
 
-          <label className={`flex items-center gap-2 text-sm text-gray-700 ${activeRatio ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
-            <input
-              type="checkbox"
-              checked={activeState?.useShadow ?? false}
-              onChange={() => activeRatio && toggleShadow(activeRatio)}
-              disabled={!activeRatio}
-              className="rounded border-gray-300"
-            />
-            Drop shadow
-          </label>
+            <label className={`flex items-center gap-2 text-sm text-gray-700 ${activeRatio ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+              <input
+                type="checkbox"
+                checked={activeState?.useShadow ?? false}
+                onChange={() => activeRatio && toggleShadow(activeRatio)}
+                disabled={!activeRatio}
+                className="rounded border-gray-300"
+              />
+              Drop shadow
+            </label>
+            </>
           )}
         </div>
 
