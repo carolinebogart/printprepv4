@@ -204,13 +204,13 @@ function UploadSection({ isLoggedIn, isActive, hasCredits }) {
   if (isLoggedIn && isActive && hasCredits) {
     // Show the upload form
     return (
-      <section style={{ background: 'var(--agw-navy)', borderBottom: '3px solid var(--agw-gold)', padding: '3rem 1.5rem' }}>
+      <section style={{ background: 'var(--agw-cream)', borderBottom: '3px solid var(--agw-navy)', padding: '3rem 1.5rem' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <div style={{ marginBottom: '2rem' }}>
+          <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
             <h2 style={{
               fontFamily: 'var(--font-display)',
               fontSize: 'clamp(1.8rem, 4vw, 2.5rem)',
-              color: 'var(--agw-cream)',
+              color: 'var(--agw-navy)',
               lineHeight: 1.1,
               marginBottom: '0.5rem',
             }}>Upload Your Artwork</h2>
@@ -220,7 +220,7 @@ function UploadSection({ isLoggedIn, isActive, hasCredits }) {
               fontSize: '0.9rem',
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
-              color: 'var(--agw-gold)',
+              color: 'var(--agw-red)',
             }}>One image → every print size at 300 DPI</p>
           </div>
           <UploadForm isLoggedIn={true} isActive={true} hasCredits={true} />
