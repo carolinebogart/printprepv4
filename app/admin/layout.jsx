@@ -13,6 +13,7 @@ export default async function AdminLayout({ children }) {
           <a href="/admin/images" className="hover:underline">Images</a>
           <a href="/admin/audit-log" className="hover:underline">Audit Log</a>
           <a href="/admin/system-events" className="hover:underline">System Events</a>
+          <a href="/admin/mockups" className="hover:underline">Mockups</a>
         </div>
         <span className="text-purple-200 text-xs capitalize">{admin.role.replace('_', ' ')}</span>
       </div>

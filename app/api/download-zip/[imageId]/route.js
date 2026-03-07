@@ -33,6 +33,12 @@ export async function GET(request, { params }) {
       return Response.json({ error: 'No outputs found' }, { status: 404 });
     }
 
+    // Fetch mockup outputs for this image (if any)
+    const { data: mockupOutputs } = await supabase
+      .from('mockup_outputs')
+      .select('id, storage_path, scene_id')
+      .eq('image_id', imageId);
+
     // Create ZIP archive using a ReadableStream
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
@@ -62,6 +68,25 @@ export async function GET(request, { params }) {
         } catch (err) {
           console.error(`Failed to add ${output.filename} to zip:`, err);
           // Continue with other files
+        }
+      }
+
+      // Add mockup outputs to zip under a mockups/ subfolder
+      if (mockupOutputs?.length) {
+        for (let i = 0; i < mockupOutputs.length; i++) {
+          const mockup = mockupOutputs[i];
+          try {
+            const { data: fileData } = await supabase.storage
+              .from('printprep-images')
+              .download(mockup.storage_path);
+
+            if (fileData) {
+              const buffer = Buffer.from(await fileData.arrayBuffer());
+              archive.append(buffer, { name: `mockups/mockup_${i + 1}.jpg` });
+            }
+          } catch (err) {
+            console.error(`Failed to add mockup ${mockup.id} to zip:`, err);
+          }
         }
       }
 

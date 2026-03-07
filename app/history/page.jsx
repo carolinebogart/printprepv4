@@ -91,6 +91,36 @@ export default async function HistoryPage() {
     });
   }
 
+  // Batch-fetch mockup outputs for active images
+  let allMockups = [];
+  if (activeImageIds.length > 0) {
+    const { data: mockups } = await supabase
+      .from('mockup_outputs')
+      .select('id, image_id, storage_path, scene_id, created_at')
+      .in('image_id', activeImageIds)
+      .order('created_at', { ascending: false });
+    allMockups = mockups || [];
+  }
+
+  // Signed URLs for mockup outputs
+  const allMockupPaths = allMockups.map((m) => m.storage_path);
+  let mockupUrlMap = {};
+  if (allMockupPaths.length > 0) {
+    const signedMockups = await supabase.storage
+      .from('printprep-images')
+      .createSignedUrls(allMockupPaths, 3600);
+    (signedMockups.data || []).forEach((item, i) => {
+      if (item.signedUrl) mockupUrlMap[allMockups[i].id] = item.signedUrl;
+    });
+  }
+
+  // Group mockups by image_id
+  const mockupsByImage = {};
+  allMockups.forEach((m) => {
+    if (!mockupsByImage[m.image_id]) mockupsByImage[m.image_id] = [];
+    mockupsByImage[m.image_id].push({ ...m, previewUrl: mockupUrlMap[m.id] || null });
+  });
+
   // Merge everything
   const imagesWithOutputs = images.map((img) => ({
     ...img,
@@ -103,6 +133,7 @@ export default async function HistoryPage() {
           ...out,
           previewUrl: outputUrlMap[out.id] || null,
         })),
+    mockups: img.expired_at ? [] : (mockupsByImage[img.id] || []),
   }));
 
   return (

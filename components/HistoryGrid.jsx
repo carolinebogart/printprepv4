@@ -114,9 +114,31 @@ function ImageCard({
   setSkipConfirm,
 }) {
   const [showOutputs, setShowOutputs] = useState(isNew);
+  const [showMockups, setShowMockups] = useState(false);
+  const [mockups, setMockups] = useState(image.mockups || []);
+  const [generatingMockup, setGeneratingMockup] = useState(false);
   const [groupByRatio, setGroupByRatio] = useState(true);
   const [sortNewestFirst, setSortNewestFirst] = useState(true);
   const cardRef = useRef(null);
+
+  async function handleGenerateMockup() {
+    setGeneratingMockup(true);
+    try {
+      const res = await fetch('/api/mockup/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageId: image.id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Failed to generate mockup');
+      setMockups((prev) => [{ id: json.mockupOutputId, previewUrl: json.url }, ...prev]);
+      setShowMockups(true);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setGeneratingMockup(false);
+    }
+  }
 
   // Auto-scroll to highlighted card
   useEffect(() => {
@@ -317,6 +339,87 @@ function ImageCard({
             />
             Don&apos;t ask again
           </label>
+        </div>
+      )}
+
+      {/* Mockups section */}
+      {!isExpired && image.status === 'processed' && outputCount > 0 && !showConfirm && (
+        <div className="border-t border-gray-100">
+          <button
+            onClick={() => setShowMockups(!showMockups)}
+            className="w-full px-4 py-2.5 text-xs text-gray-600 hover:bg-gray-50 flex items-center justify-between transition-colors"
+          >
+            <span className="font-medium">
+              {mockups.length > 0
+                ? `${mockups.length} mockup${mockups.length !== 1 ? 's' : ''}`
+                : 'Mockups'}
+            </span>
+            <svg
+              className={`w-4 h-4 text-gray-400 transition-transform ${showMockups ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showMockups && (
+            <div className="px-4 pb-4">
+              {mockups.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-xs text-gray-400 mb-3">No mockups yet</p>
+                  <button
+                    onClick={handleGenerateMockup}
+                    disabled={generatingMockup}
+                    className="text-xs font-medium bg-indigo-50 text-indigo-700 rounded-lg px-3 py-1.5 hover:bg-indigo-100 transition-colors disabled:opacity-50"
+                  >
+                    {generatingMockup ? 'Generating…' : 'Generate Mockup'}
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-3">
+                    {mockups.map((mockup) => (
+                      <div key={mockup.id} className="group relative">
+                        <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden aspect-[4/3] hover:border-indigo-300 transition-colors">
+                          {mockup.previewUrl ? (
+                            <img
+                              src={mockup.previewUrl}
+                              alt="Mockup"
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <span className="text-[10px] text-gray-400">No preview</span>
+                            </div>
+                          )}
+                          {mockup.previewUrl && (
+                            <a
+                              href={mockup.previewUrl}
+                              download={`mockup_${mockup.id}.jpg`}
+                              className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all rounded-lg"
+                              title="Download mockup"
+                            >
+                              <svg className="w-6 h-6 text-white drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleGenerateMockup}
+                    disabled={generatingMockup}
+                    className="text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50"
+                  >
+                    {generatingMockup ? 'Generating…' : '+ Generate another mockup'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

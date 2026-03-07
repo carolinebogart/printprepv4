@@ -4,6 +4,7 @@ import { extractCrop, resizeToTarget, upscaleCropWithAI } from '../../../lib/ima
 import { generateOutputFilename } from '../../../lib/output-sizes.js';
 import { hasCredits, canUsePng, getRetentionDays } from '../../../lib/credits.js';
 import { logSystemEvent } from '../../../lib/system-events.js';
+import { generateMockupForImage } from '../../../lib/mockup-generator.js';
 
 export async function POST(request) {
   try {
@@ -155,7 +156,8 @@ export async function POST(request) {
             format
           );
 
-          result = { ratioKey, sizeLabel: size.label, filename, buffer, format, success: true };
+          const { width: outW, height: outH } = await (await import('sharp')).default(buffer).metadata();
+          result = { ratioKey, sizeLabel: size.label, filename, buffer, format, width: outW, height: outH, success: true };
         } catch (error) {
           outputs.push({
             ratioKey,
@@ -221,6 +223,8 @@ export async function POST(request) {
             storage_path: storagePath,
             format: result.format,
             status: 'completed',
+            width: result.width ?? null,
+            height: result.height ?? null,
           })
           .select()
           .single();
@@ -297,6 +301,30 @@ export async function POST(request) {
         .from('images')
         .update({ status: 'processed', expires_at: expiresAt.toISOString() })
         .eq('id', imageId);
+    }
+
+    // Auto-mockup: fire-and-forget after successful processing
+    if (successCount > 0) {
+      const { data: mockupPrefs } = await supabase
+        .from('user_mockup_prefs')
+        .select('auto_mockup')
+        .eq('user_id', user.id)
+        .single();
+
+      if (mockupPrefs?.auto_mockup) {
+        generateMockupForImage({
+          imageId,
+          userId: user.id,
+          sceneId: null,
+          frameId: null,
+          matColor: null,
+          matThicknessPx: null,
+          supabase,
+          serviceClient,
+        }).catch((err) => {
+          console.error('[auto-mockup] Failed for image', imageId, err?.message);
+        });
+      }
     }
 
     return Response.json({
