@@ -193,6 +193,7 @@ export default function UploadForm({ isLoggedIn, isActive, hasCredits }) {
   const [error, setError] = useState(null);
   const [metadata, setMetadata] = useState(null);
   const [resolution, setResolution] = useState(null); // { width, height, tier }
+  const [qualityOpen, setQualityOpen] = useState(false);
   const fileInputRef = useRef(null);
   const router = useRouter();
 
@@ -214,6 +215,7 @@ export default function UploadForm({ isLoggedIn, isActive, hasCredits }) {
     setError(null);
     setMetadata(null);
     setResolution(null);
+    setQualityOpen(false);
     const err = validateFile(f);
     if (err) {
       setError(err);
@@ -351,9 +353,18 @@ export default function UploadForm({ isLoggedIn, isActive, hasCredits }) {
             <span className="text-gray-400">native print size at 300 DPI</span>
           </div>
 
-          {/* Per-ratio quality table */}
+          {/* Per-ratio quality table — collapsible */}
           {resolution.qualityData && (
-            <QualityPreviewTable qualityData={resolution.qualityData} />
+            <div>
+              <button
+                type="button"
+                onClick={() => setQualityOpen((o) => !o)}
+                className="text-xs text-blue-600 underline underline-offset-2 px-1"
+              >
+                {qualityOpen ? 'Hide quality breakdown ▴' : 'Show quality breakdown ▾'}
+              </button>
+              {qualityOpen && <div className="mt-2"><QualityPreviewTable qualityData={resolution.qualityData} /></div>}
+            </div>
           )}
         </div>
       )}
