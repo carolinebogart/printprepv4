@@ -27,39 +27,12 @@ export default async function BlogPostPage({ params }) {
     <div style={{ background: 'var(--agw-cream)', minHeight: '100vh' }}>
 
       {/* Header */}
-      <section style={{
-        background: 'var(--agw-navy)',
-        padding: '4rem 1.5rem',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          backgroundImage: 'radial-gradient(circle, rgba(232,163,42,0.07) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }} />
-        <div style={{ maxWidth: '720px', margin: '0 auto', position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-            <a href="/blog" style={{
-              fontFamily: 'var(--font-mono)', fontSize: '0.6rem',
-              letterSpacing: '0.12em', textTransform: 'uppercase',
-              color: 'var(--agw-steel)', textDecoration: 'none',
-            }}>← All Posts</a>
-            <span style={{ color: 'rgba(245,233,200,0.2)' }}>|</span>
-            <span style={{
-              fontFamily: 'var(--font-mono)', fontSize: '0.6rem',
-              letterSpacing: '0.12em', textTransform: 'uppercase',
-              background: post.category === 'Product' ? 'var(--agw-red)' : 'var(--agw-steel)',
-              color: 'var(--agw-cream)', padding: '0.2rem 0.5rem', borderRadius: '1px',
-            }}>{post.category}</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--agw-steel)', letterSpacing: '0.06em' }}>{post.date}</span>
-          </div>
-          <h1 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(1.8rem, 4vw, 3.5rem)',
-            color: 'var(--agw-cream)',
-            lineHeight: 1.1,
-          }}>{post.title}</h1>
+      <section style={{ background: 'var(--agw-navy)', borderBottom: '2px solid var(--agw-gold)', padding: '0.9rem 1.5rem' }}>
+        <div style={{ maxWidth: '720px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <a href="/blog" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--agw-steel)', textDecoration: 'none', flexShrink: 0 }}>← Blog</a>
+          <span style={{ color: 'rgba(245,233,200,0.2)', flexShrink: 0 }}>|</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', background: post.category === 'Product' ? 'var(--agw-red)' : 'var(--agw-steel)', color: 'var(--agw-cream)', padding: '0.15rem 0.45rem', borderRadius: '1px', flexShrink: 0 }}>{post.category}</span>
+          <h1 style={{ fontFamily: 'var(--font-sub)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--agw-cream)', lineHeight: 1.2, margin: 0 }}>{post.title}</h1>
         </div>
       </section>
 

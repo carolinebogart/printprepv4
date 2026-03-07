@@ -53,6 +53,15 @@ export async function POST(request) {
       return Response.json({ error: 'Image not found' }, { status: 404 });
     }
 
+    // Shared context for system event logging — available at all failure points below
+    const eventContext = {
+      userEmail: user.email,
+      planName: subscription.plan_name,
+      imageDimensions: `${image.width}x${image.height}`,
+      imageFormat: image.format,
+      originalFilename: image.storage_path.split('/').pop(),
+    };
+
     // Download the original image from storage
     const { data: fileData, error: downloadError } = await supabase.storage
       .from('printprep-images')
@@ -103,7 +112,12 @@ export async function POST(request) {
           eventType: 'upscale_failure',
           severity: 'error',
           message: `Replicate upscaling failed for ratio ${ratioKey}: ${error.message}`,
-          details: { ratioKey, errorMessage: error.message, imageId },
+          details: {
+            ratioKey,
+            requestedSizeCount: sizes.length,
+            errorMessage: error.message,
+            ...eventContext,
+          },
           userId: user.id,
           imageId,
         });
@@ -172,7 +186,14 @@ export async function POST(request) {
             eventType: 'upload_failure',
             severity: 'error',
             message: `Storage upload failed for ${result.filename}: ${uploadError.message}`,
-            details: { ratioKey: result.ratioKey, sizeLabel: result.sizeLabel, filename: result.filename, storagePath, errorMessage: uploadError.message },
+            details: {
+              ratioKey: result.ratioKey,
+              sizeLabel: result.sizeLabel,
+              filename: result.filename,
+              storagePath,
+              errorMessage: uploadError.message,
+              ...eventContext,
+            },
             userId: user.id,
             imageId,
           });
@@ -237,11 +258,22 @@ export async function POST(request) {
 
     if (successCount < requestedCount) {
       const failures = outputs.filter((o) => !o.success || !o.uploaded);
+      const failureBreakdown = {};
+      failures.forEach((f) => {
+        const key = f.error || 'unknown';
+        failureBreakdown[key] = (failureBreakdown[key] || 0) + 1;
+      });
       logSystemEvent({
         eventType: 'output_mismatch',
         severity: successCount === 0 ? 'critical' : 'warning',
         message: `Output count mismatch: ${successCount} of ${requestedCount} outputs succeeded`,
-        details: { requestedCount, successCount, imageId, failures: failures.map((f) => ({ ratioKey: f.ratioKey, sizeLabel: f.sizeLabel, error: f.error })) },
+        details: {
+          requestedCount,
+          successCount,
+          failureBreakdown,
+          failures: failures.map((f) => ({ ratioKey: f.ratioKey, sizeLabel: f.sizeLabel, error: f.error })),
+          ...eventContext,
+        },
         userId: user.id,
         imageId,
       });
@@ -285,7 +317,19 @@ export async function POST(request) {
       eventType: 'processing_crash',
       severity: 'critical',
       message: `Processing crashed: ${err?.message}`,
-      details: { errorMessage: err?.message, stack: err?.stack?.slice(0, 500) },
+      details: {
+        errorMessage: err?.message,
+        stack: err?.stack?.slice(0, 500),
+        userEmail: user?.email ?? null,
+        planName: subscription?.plan_name ?? null,
+        imageId: imageId ?? null,
+        imageDimensions: image ? `${image.width}x${image.height}` : null,
+        heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+        heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+        rssMB: Math.round(mem.rss / 1024 / 1024),
+      },
+      userId: user?.id ?? null,
+      imageId: imageId ?? null,
     });
     return Response.json({ error: 'Processing failed. Please try again.' }, { status: 500 });
   }

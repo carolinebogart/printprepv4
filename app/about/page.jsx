@@ -7,57 +7,11 @@ export default function AboutPage() {
   return (
     <div style={{ background: 'var(--agw-cream)', minHeight: '100vh' }}>
 
-      {/* Hero */}
-      <section style={{
-        background: 'var(--agw-navy)',
-        padding: '5rem 1.5rem',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          backgroundImage: 'radial-gradient(circle, rgba(232,163,42,0.07) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }} />
-        <div style={{ maxWidth: '860px', margin: '0 auto', position: 'relative', display: 'grid', gridTemplateColumns: '1fr auto', gap: '3rem', alignItems: 'center' }}>
-          <div>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--agw-gold)', display: 'block', marginBottom: '1rem' }}>
-              ★ The Story ★
-            </span>
-            <h1 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(2.5rem, 6vw, 5rem)',
-              color: 'var(--agw-cream)',
-              lineHeight: 1.05,
-              marginBottom: '1.5rem',
-            }}>About All<br /><span style={{ color: 'var(--agw-gold)' }}>Good Web</span></h1>
-            <p style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: '1.1rem',
-              color: 'rgba(245,233,200,0.8)',
-              lineHeight: 1.75,
-              maxWidth: '480px',
-            }}>
-              Tools built for the people doing the actual work — Etsy sellers,
-              digital creators, and small shop owners who deserve software that
-              just works.
-            </p>
-          </div>
-          <div style={{ flexShrink: 0 }}>
-            <div style={{
-              width: 'clamp(120px, 15vw, 200px)',
-              height: 'clamp(120px, 15vw, 200px)',
-              borderRadius: '50%',
-              border: '3px solid var(--agw-gold)',
-              overflow: 'hidden',
-            }}>
-              <img
-                src="/allgoodweb-logo.jpg"
-                alt="All Good Web mascot"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
-            </div>
-          </div>
+      {/* Header */}
+      <section style={{ background: 'var(--agw-navy)', borderBottom: '2px solid var(--agw-gold)', padding: '0.9rem 1.5rem' }}>
+        <div style={{ maxWidth: '860px', margin: '0 auto', display: 'flex', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--agw-cream)', lineHeight: 1, margin: 0 }}>About All Good Web</h1>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--agw-gold)' }}>★ The Story ★</span>
         </div>
       </section>
 

@@ -49,71 +49,16 @@ export default function PrintPrepPage() {
     <div style={{ background: 'var(--agw-cream)', minHeight: '100vh' }}>
 
       {/* Hero */}
-      <section style={{
-        background: 'var(--agw-navy)',
-        padding: '5rem 1.5rem',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          backgroundImage: 'radial-gradient(circle, rgba(232,163,42,0.07) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }} />
-        <div style={{ maxWidth: '860px', margin: '0 auto', position: 'relative', textAlign: 'center' }}>
-          <span style={{
-            fontFamily: 'var(--font-mono)', fontSize: '0.6rem',
-            letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'var(--agw-gold)', display: 'block', marginBottom: '1rem',
-          }}>★ Tool 01 · Paid from $29/mo ★</span>
-
-          <h1 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(2.5rem, 6vw, 5rem)',
-            color: 'var(--agw-cream)',
-            lineHeight: 1.05,
-            marginBottom: '1.25rem',
-          }}>PrintPrep</h1>
-
-          <p style={{
-            fontFamily: 'var(--font-sub)',
-            fontWeight: 600, fontSize: '1.1rem',
-            letterSpacing: '0.05em', textTransform: 'uppercase',
-            color: 'var(--agw-gold)',
-            marginBottom: '1.5rem',
-          }}>Resize Your Art for Every Print Format</p>
-
-          <p style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '1.1rem', lineHeight: 1.75,
-            color: 'rgba(245,233,200,0.8)',
-            maxWidth: '580px', margin: '0 auto 2.5rem',
-          }}>
-            Upload one high-resolution image. Get every standard print size — 2:3, 3:4, 4:5,
-            8:11, and A-Series — all at 300 DPI, ready for print. Built for Etsy digital
-            printable sellers who need every size in their listings.
-          </p>
-
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/auth/register" style={{
-              fontFamily: 'var(--font-sub)', fontWeight: 700,
-              fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: 'var(--agw-cream)', background: 'var(--agw-red)',
-              padding: '0.9rem 2.5rem', textDecoration: 'none', borderRadius: '2px',
-              border: '2px solid var(--agw-red)',
-            }}>Start Free →</a>
-            <a href="/pricing" style={{
-              fontFamily: 'var(--font-sub)', fontWeight: 600,
-              fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: 'var(--agw-cream)', background: 'transparent',
-              padding: '0.9rem 2.5rem', textDecoration: 'none', borderRadius: '2px',
-              border: '2px solid rgba(245,233,200,0.35)',
-            }}>See Pricing</a>
+      <section style={{ background: 'var(--agw-navy)', borderBottom: '2px solid var(--agw-gold)', padding: '0.9rem 1.5rem' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap' }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--agw-cream)', lineHeight: 1, margin: 0 }}>PrintPrep</h1>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--agw-gold)' }}>Resize art for every print format · from $29/mo</span>
           </div>
-
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--agw-steel)', marginTop: '1.25rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            1 credit = 1 image · All selected sizes included
-          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <a href="/auth/register" style={{ fontFamily: 'var(--font-sub)', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--agw-cream)', background: 'var(--agw-red)', padding: '0.35rem 0.9rem', textDecoration: 'none', borderRadius: '2px' }}>Start Free →</a>
+            <a href="/pricing" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--agw-steel)', textDecoration: 'none' }}>Pricing</a>
+          </div>
         </div>
       </section>
 

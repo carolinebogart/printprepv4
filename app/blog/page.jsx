@@ -13,38 +13,10 @@ export default function BlogPage() {
     <div style={{ background: 'var(--agw-cream)', minHeight: '100vh' }}>
 
       {/* Header */}
-      <section style={{
-        background: 'var(--agw-navy)',
-        padding: '4rem 1.5rem',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          backgroundImage: 'radial-gradient(circle, rgba(232,163,42,0.07) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }} />
-        <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--agw-gold)', display: 'block', marginBottom: '0.75rem' }}>
-            ★ From the Desk ★
-          </span>
-          <h1 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(2.5rem, 6vw, 5rem)',
-            color: 'var(--agw-cream)',
-            lineHeight: 1.05,
-            marginBottom: '1rem',
-          }}>The Blog</h1>
-          <p style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '1.05rem',
-            color: 'rgba(245,233,200,0.75)',
-            lineHeight: 1.7,
-            maxWidth: '480px',
-          }}>
-            Tips for Etsy sellers, guides on print formats and file quality, and product updates
-            from the All Good Web team.
-          </p>
+      <section style={{ background: 'var(--agw-navy)', borderBottom: '2px solid var(--agw-gold)', padding: '0.9rem 1.5rem' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--agw-cream)', lineHeight: 1, margin: 0 }}>The Blog</h1>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--agw-gold)' }}>Tips · Product updates · Etsy seller guides</span>
         </div>
       </section>
 

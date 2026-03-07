@@ -5,9 +5,11 @@ const EVENT_TYPE_LABELS = {
   output_mismatch: 'Output Mismatch',
   upload_failure: 'Upload Failure',
   processing_crash: 'Processing Crash',
+  cleanup_run: 'Cleanup Run',
 };
 
 const SEVERITY_STYLES = {
+  info: 'bg-blue-100 text-blue-700',
   warning: 'bg-amber-100 text-amber-800',
   error: 'bg-red-100 text-red-700',
   critical: 'bg-red-200 text-red-900 font-semibold',
@@ -18,6 +20,7 @@ const EVENT_TYPE_STYLES = {
   output_mismatch: 'bg-orange-100 text-orange-800',
   upload_failure: 'bg-blue-100 text-blue-800',
   processing_crash: 'bg-red-100 text-red-800',
+  cleanup_run: 'bg-green-100 text-green-800',
 };
 
 export default async function SystemEventsPage({ searchParams }) {
@@ -79,6 +82,7 @@ export default async function SystemEventsPage({ searchParams }) {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Message</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">User</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Image</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Plan</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Details</th>
               </tr>
             </thead>
@@ -102,16 +106,37 @@ export default async function SystemEventsPage({ searchParams }) {
                   </td>
                   <td className="px-4 py-3 text-gray-900 max-w-xs">
                     <span className="line-clamp-2">{event.message}</span>
+                    {event.event_type === 'output_mismatch' && event.details?.failureBreakdown && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {Object.entries(event.details.failureBreakdown).map(([err, count]) => (
+                          <span key={err} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                            {count}× {err}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs font-mono">
-                    {event.user_id ? (
-                      <a href={`/admin/users/${event.user_id}`} className="hover:underline text-blue-600">
-                        {event.user_id.slice(0, 8)}…
-                      </a>
+                  <td className="px-4 py-3 text-xs">
+                    {event.details?.userEmail ? (
+                      event.user_id
+                        ? <a href={`/admin/users/${event.user_id}`} className="hover:underline text-blue-600">{event.details.userEmail}</a>
+                        : <span className="text-gray-700">{event.details.userEmail}</span>
+                    ) : event.user_id ? (
+                      <a href={`/admin/users/${event.user_id}`} className="hover:underline text-blue-600 font-mono">{event.user_id.slice(0, 8)}…</a>
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs font-mono">
-                    {event.image_id ? event.image_id.slice(0, 8) + '…' : '—'}
+                  <td className="px-4 py-3 text-xs text-gray-500">
+                    {event.details?.imageDimensions ? (
+                      <div>
+                        <div className="font-medium text-gray-700">{event.details.imageDimensions}</div>
+                        {event.details.imageFormat && <div className="text-gray-400 uppercase">{event.details.imageFormat}</div>}
+                      </div>
+                    ) : event.image_id ? (
+                      <span className="font-mono">{event.image_id.slice(0, 8)}…</span>
+                    ) : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-500">
+                    {event.details?.planName ?? '—'}
                   </td>
                   <td className="px-4 py-3">
                     {event.details && Object.keys(event.details).length > 0 && (
