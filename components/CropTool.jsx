@@ -48,18 +48,25 @@ export default function CropTool({
       };
     }, {});
 
-  // Which ratios are selected — start with none selected
+  // Which ratios are selected — default-select 2:3 on load
   const [selectedRatios, setSelectedRatios] = useState(() =>
-    initCropStates(ratios)
+    ratios.reduce((acc, r) => ({ ...acc, [r.key]: r.key === '2:3' }), {})
   );
 
-  // Current ratio being edited
-  const [activeRatio, setActiveRatio] = useState(null);
+  // Current ratio being edited — default to 2:3
+  const [activeRatio, setActiveRatio] = useState('2:3');
 
-  // Per-ratio crop state
-  const [cropStates, setCropStates] = useState(() =>
-    initCropStates(ratios)
-  );
+  // Per-ratio crop state — pre-select 40x60 in the default 2:3 ratio
+  const [cropStates, setCropStates] = useState(() => {
+    const states = initCropStates(ratios);
+    if (states['2:3']) {
+      states['2:3'].sizes = states['2:3'].sizes.map((s) => ({
+        ...s,
+        selected: s.label === '40x60',
+      }));
+    }
+    return states;
+  });
 
   // Custom size state: { width: number, height: number, unit: 'px' | 'in', confirmed: false }
   const [customSize, setCustomSize] = useState({ width: null, height: null, unit: 'px', confirmed: false });
@@ -560,12 +567,18 @@ export default function CropTool({
     const newOrientation = currentOrientation === 'landscape' ? 'portrait' : 'landscape';
     const newRatios = newOrientation === 'landscape' ? landscapeRatios : portraitRatios;
 
-    // Reset all selections and crop states for the new orientation
+    // Reset all selections and crop states for the new orientation, defaulting to 2:3 + 40x60
     setCurrentOrientation(newOrientation);
-    // Reset selectedRatios to match new ratios structure
-    setSelectedRatios(newRatios.reduce((acc, r) => ({ ...acc, [r.key]: false }), {}));
-    setActiveRatio(null);
-    setCropStates(initCropStates(newRatios));
+    setSelectedRatios(newRatios.reduce((acc, r) => ({ ...acc, [r.key]: r.key === '2:3' }), {}));
+    setActiveRatio('2:3');
+    const newStates = initCropStates(newRatios);
+    if (newStates['2:3']) {
+      newStates['2:3'].sizes = newStates['2:3'].sizes.map((s) => ({
+        ...s,
+        selected: s.label === '40x60',
+      }));
+    }
+    setCropStates(newStates);
   }, [currentOrientation, portraitRatios, landscapeRatios, saveCropState, initCropStates]);
 
   // Handle custom size confirmation
@@ -615,12 +628,12 @@ export default function CropTool({
       ...ratios,
     ];
 
-    // Add custom to crop states
+    // Add custom to crop states — pre-select its single size
     setCropStates((prev) => ({
       custom: {
         canvasData: null,
         cropBoxData: null,
-        sizes: [{ width: widthIn, height: heightIn, label, useUpscaling: null, selected: false }],
+        sizes: [{ width: widthIn, height: heightIn, label, useUpscaling: null, selected: true }],
         upscaleMode: null,
         backgroundColor: '#FFFFFF',
         useShadow: false,
@@ -628,8 +641,9 @@ export default function CropTool({
       ...prev,
     }));
 
-    // Add to selected ratios (but don't auto-activate)
-    setSelectedRatios((prev) => ({ ...prev, custom: false }));
+    // Auto-select and activate the custom ratio
+    setSelectedRatios((prev) => ({ ...prev, custom: true }));
+    setActiveRatio('custom');
 
     // Mark as confirmed so we don't re-render the input form
     setCustomSize((prev) => ({ ...prev, confirmed: true }));
