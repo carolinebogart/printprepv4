@@ -802,7 +802,10 @@ export default function CropTool({
     }
   };
 
-  const activeRatioData = ratios.find((r) => r.key === activeRatio);
+  const customRatioEntry = customSize.confirmed && cropStates.custom
+    ? { key: 'custom', name: 'Custom Size', ratio: (cropStates.custom.sizes[0]?.width || 1) / (cropStates.custom.sizes[0]?.height || 1), isCustom: true }
+    : null;
+  const activeRatioData = ratios.find((r) => r.key === activeRatio) ?? (activeRatio === 'custom' ? customRatioEntry : null);
   const activeState = activeRatio ? cropStates[activeRatio] : null;
 
   // Sacrifice direction
