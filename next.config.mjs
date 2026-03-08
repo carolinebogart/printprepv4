@@ -3,7 +3,7 @@ const nextConfig = {
   // Allow LAN access during local dev (e.g. testing from another device on the same network)
   allowedDevOrigins: ['192.168.2.*'],
   // Sharp is used for image processing - ensure it's available server-side
-  serverExternalPackages: ['sharp', 'canvas', 'pdfjs-dist'],
+  serverExternalPackages: ['sharp', 'canvas', '@napi-rs/canvas', 'pdfjs-dist'],
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb',
