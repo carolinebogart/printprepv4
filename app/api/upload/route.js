@@ -3,6 +3,7 @@ import { getImageInfo } from '@/lib/image-processor';
 import { getRatiosForOrientation } from '@/lib/output-sizes';
 import { NextResponse } from 'next/server';
 import sharp from 'sharp';
+import { Upload } from 'tus-js-client';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -92,17 +93,35 @@ export async function POST(request) {
     const imageId = crypto.randomUUID();
     const storagePath = `${user.id}/${imageId}.${ext}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('printprep-images')
-      .upload(storagePath, buffer, {
-        contentType: file.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-        upsert: false,
-      });
+    // Use TUS resumable upload — required for large files (standard upload has a size cap)
+    const { data: { session } } = await supabase.auth.getSession();
+    const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL.replace('https://', '').split('.')[0];
 
-    if (uploadError) {
-      console.error('Storage upload error:', uploadError);
-      return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 });
-    }
+    await new Promise((resolve, reject) => {
+      const upload = new Upload(buffer, {
+        endpoint: `https://${projectRef}.supabase.co/storage/v1/upload/resumable`,
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        headers: {
+          authorization: `Bearer ${session.access_token}`,
+          'x-upsert': 'false',
+        },
+        uploadDataDuringCreation: true,
+        removeFingerprintOnSuccess: true,
+        metadata: {
+          bucketName: 'printprep-images',
+          objectName: storagePath,
+          contentType: file.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+          cacheControl: '3600',
+        },
+        chunkSize: 6 * 1024 * 1024, // 6MB chunks — required by Supabase TUS
+        onError: (err) => {
+          console.error('Storage upload error:', err);
+          reject(err);
+        },
+        onSuccess: () => resolve(),
+      });
+      upload.start();
+    });
 
     // Generate small thumbnail (persists after file expiry for history view)
     let thumbnailPath = null;
