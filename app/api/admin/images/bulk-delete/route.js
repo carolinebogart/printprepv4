@@ -33,12 +33,14 @@ export async function POST(request) {
   // Fetch all outputs for these images
   const { data: outputs } = await service
     .from('processed_outputs')
-    .select('id, image_id, storage_path')
+    .select('id, image_id, storage_path, preview_path')
     .in('image_id', image_ids);
 
   // Delete output files from storage
   if (outputs && outputs.length > 0) {
-    const outputPaths = outputs.map((o) => o.storage_path).filter(Boolean);
+    const outputPaths = outputs.flatMap((o) =>
+      [o.storage_path, o.preview_path].filter(Boolean)
+    );
     if (outputPaths.length > 0) {
       // Supabase storage remove has limits, batch in groups of 100
       for (let i = 0; i < outputPaths.length; i += 100) {

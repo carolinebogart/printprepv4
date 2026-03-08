@@ -244,6 +244,30 @@ export async function POST(request) {
                 upsert: true,
               });
 
+            // Generate display preview for history page (800px max, JPEG q75, non-fatal)
+            let previewPath = null;
+            if (!uploadError) {
+              try {
+                const sharpMod = (await import('sharp')).default;
+                const previewBuffer = await sharpMod(result.buffer)
+                  .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+                  .jpeg({ quality: 75 })
+                  .toBuffer();
+                const previewFilename = result.filename.replace(/\.[^.]+$/, '') + '.jpg';
+                previewPath = `${user.id}/previews/${imageId}/${previewFilename}`;
+                const { error: previewUploadErr } = await serviceClient.storage
+                  .from('printprep-images')
+                  .upload(previewPath, previewBuffer, { contentType: 'image/jpeg', upsert: true });
+                if (previewUploadErr) {
+                  console.warn('[process] Preview upload failed:', previewUploadErr.message);
+                  previewPath = null;
+                }
+              } catch (previewErr) {
+                console.warn('[process] Preview generation failed:', previewErr?.message);
+                previewPath = null;
+              }
+            }
+
             result.buffer = null;
             if (global.gc) global.gc();
 
@@ -271,6 +295,7 @@ export async function POST(request) {
                 size_label: result.sizeLabel,
                 filename: result.filename,
                 storage_path: storagePath,
+                preview_path: previewPath,
                 format: result.format,
                 status: 'completed',
                 width: result.width ?? null,

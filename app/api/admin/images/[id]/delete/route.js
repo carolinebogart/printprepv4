@@ -24,12 +24,14 @@ export async function POST(request, { params }) {
   // Fetch outputs
   const { data: outputs } = await service
     .from('processed_outputs')
-    .select('id, storage_path')
+    .select('id, storage_path, preview_path')
     .eq('image_id', id);
 
   // Delete output files from storage
   if (outputs && outputs.length > 0) {
-    const outputPaths = outputs.map((o) => o.storage_path).filter(Boolean);
+    const outputPaths = outputs.flatMap((o) =>
+      [o.storage_path, o.preview_path].filter(Boolean)
+    );
     if (outputPaths.length > 0) {
       await service.storage.from(process.env.SUPABASE_STORAGE_BUCKET || 'printprep-images').remove(outputPaths);
     }

@@ -42,11 +42,13 @@ export async function POST(request) {
     // Fetch all output storage paths for these images
     const { data: outputs } = await supabase
       .from('processed_outputs')
-      .select('storage_path')
+      .select('storage_path, preview_path')
       .in('image_id', imageIds);
 
     // Delete output files from storage
-    const outputPaths = (outputs || []).map((o) => o.storage_path).filter(Boolean);
+    const outputPaths = (outputs || []).flatMap((o) =>
+      [o.storage_path, o.preview_path].filter(Boolean)
+    );
     if (outputPaths.length > 0) {
       const { error: outputDeleteErr } = await supabase.storage
         .from('printprep-images')

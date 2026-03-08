@@ -80,7 +80,7 @@ export default async function HistoryPage() {
   }
 
   // Signed URLs for all active outputs
-  const allOutputPaths = allOutputs.map((out) => out.storage_path);
+  const allOutputPaths = allOutputs.map((out) => out.preview_path || out.storage_path);
   let outputUrlMap = {};
   if (allOutputPaths.length > 0) {
     const signedOutputs = await supabase.storage
