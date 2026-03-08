@@ -90,7 +90,16 @@ export async function POST(request) {
           .download(image.storage_path);
 
         if (downloadError || !fileData) {
-          emit({ type: 'error', error: 'Failed to retrieve image' });
+          console.error('[process] Image download failed:', { imageId, storagePath: image.storage_path, error: downloadError?.message });
+          logSystemEvent({
+            eventType: 'download_failure',
+            severity: 'error',
+            message: `Failed to download source image for processing: ${downloadError?.message ?? 'no data'}`,
+            details: { storagePath: image.storage_path, errorMessage: downloadError?.message, ...eventContext },
+            userId: user.id,
+            imageId,
+          });
+          emit({ type: 'error', error: 'Failed to retrieve your image for processing. Please try again.' });
           controller.close();
           return;
         }
@@ -112,6 +121,15 @@ export async function POST(request) {
           try {
             cropResults.set(ratioKey, await extractCrop(originalBuffer, cropData));
           } catch (error) {
+            console.error(`[process] extractCrop failed for ratio ${ratioKey}:`, error.message);
+            logSystemEvent({
+              eventType: 'crop_failure',
+              severity: 'error',
+              message: `extractCrop failed for ratio ${ratioKey}: ${error.message}`,
+              details: { ratioKey, sizeCount: sizes.length, errorMessage: error.message, ...eventContext },
+              userId: user.id,
+              imageId,
+            });
             for (const size of sizes) {
               outputs.push({ ratioKey, sizeLabel: size.label, success: false, uploaded: false, error: error.message });
             }
@@ -202,6 +220,15 @@ export async function POST(request) {
               const { width: outW, height: outH } = await (await import('sharp')).default(buffer).metadata();
               result = { ratioKey, sizeLabel: size.label, filename, buffer, format, width: outW, height: outH, success: true };
             } catch (error) {
+              console.error(`[process] resizeToTarget failed for ${ratioKey} ${size.label}:`, error.message);
+              logSystemEvent({
+                eventType: 'resize_failure',
+                severity: 'error',
+                message: `resizeToTarget failed for ${ratioKey} ${size.label}: ${error.message}`,
+                details: { ratioKey, sizeLabel: size.label, targetWidth: size.width, targetHeight: size.height, errorMessage: error.message, ...eventContext },
+                userId: user.id,
+                imageId,
+              });
               fileIndex++;
               emit({ type: 'file', index: fileIndex, total: requestedCount, ratioKey, sizeLabel: size.label, success: false });
               outputs.push({ ratioKey, sizeLabel: size.label, success: false, uploaded: false, error: error.message });
@@ -256,7 +283,16 @@ export async function POST(request) {
             emit({ type: 'file', index: fileIndex, total: requestedCount, ratioKey: result.ratioKey, sizeLabel: result.sizeLabel, success: !dbError });
 
             if (dbError) {
-              outputs.push({ filename: result.filename, ratioKey: result.ratioKey, sizeLabel: result.sizeLabel, format: result.format, success: true, uploaded: true, dbError: dbError.message });
+              console.error(`[process] DB insert failed for ${result.filename}:`, { message: dbError.message, code: dbError.code });
+              logSystemEvent({
+                eventType: 'db_insert_failure',
+                severity: 'error',
+                message: `processed_outputs insert failed for ${result.filename}: ${dbError.message}`,
+                details: { ratioKey: result.ratioKey, sizeLabel: result.sizeLabel, filename: result.filename, dbErrorCode: dbError.code, dbErrorMessage: dbError.message, ...eventContext },
+                userId: user.id,
+                imageId,
+              });
+              outputs.push({ filename: result.filename, ratioKey: result.ratioKey, sizeLabel: result.sizeLabel, format: result.format, success: false, uploaded: true, error: 'db_insert_failed' });
               continue;
             }
 
@@ -323,6 +359,10 @@ export async function POST(request) {
           }
         }
 
+        const partialFailureWarning = (successCount > 0 && successCount < requestedCount)
+          ? `${requestedCount - successCount} of ${requestedCount} output${requestedCount - successCount !== 1 ? 's' : ''} could not be generated. The rest downloaded successfully. Please contact support if this persists.`
+          : null;
+
         emit({
           type: 'done',
           result: {
@@ -335,6 +375,7 @@ export async function POST(request) {
             warnings: [
               ...Array.from(upscaleWarnings.values()),
               ...(backgroundRemovalWarning ? [backgroundRemovalWarning] : []),
+              ...(partialFailureWarning ? [partialFailureWarning] : []),
             ],
           },
         });

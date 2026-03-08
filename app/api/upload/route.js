@@ -49,9 +49,9 @@ export async function POST(request) {
     try {
       formData = await request.formData();
     } catch (parseErr) {
-      console.error('FormData parse error:', parseErr?.message);
+      console.error('[upload] FormData parse error:', parseErr?.message, { userId: user.id });
       return NextResponse.json(
-        { error: 'File too large to upload. Please try a smaller file (under 25MB) or compress it first.' },
+        { error: 'File too large to process. Maximum upload size is 400MB.' },
         { status: 413 }
       );
     }
@@ -115,8 +115,15 @@ export async function POST(request) {
         },
         chunkSize: 6 * 1024 * 1024, // 6MB chunks — required by Supabase TUS
         onError: (err) => {
-          console.error('Storage upload error:', err);
-          reject(err);
+          console.error('[upload] Storage TUS error:', {
+            message: err?.message,
+            cause: err?.causingError?.message,
+            userId: user.id,
+            filename: file.name,
+            sizeMB: (buffer.length / 1024 / 1024).toFixed(1),
+            storagePath,
+          });
+          reject(new Error('storage_upload_failed'));
         },
         onSuccess: () => resolve(),
       });
@@ -158,10 +165,10 @@ export async function POST(request) {
     });
 
     if (dbError) {
-      console.error('DB insert error:', dbError);
+      console.error('[upload] DB insert error:', { message: dbError.message, code: dbError.code, userId: user.id, imageId });
       // Clean up uploaded file
       await supabase.storage.from('printprep-images').remove([storagePath]);
-      return NextResponse.json({ error: 'Failed to save image record' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to save image record. Please try again.' }, { status: 500 });
     }
 
     // Get available ratios for this orientation
@@ -178,7 +185,10 @@ export async function POST(request) {
       })),
     });
   } catch (error) {
-    console.error('Upload error:', error?.message, error?.stack);
-    return NextResponse.json({ error: error?.message || 'Internal server error' }, { status: 500 });
+    console.error('[upload] Unhandled error:', error?.message, error?.stack);
+    const userMessage = error?.message === 'storage_upload_failed'
+      ? 'Failed to store your image. Please try again or contact support if the problem persists.'
+      : 'Something went wrong uploading your image. Please try again.';
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
