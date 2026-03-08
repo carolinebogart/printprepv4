@@ -1,4 +1,5 @@
 import { requireAdmin } from '../../../lib/admin.js';
+import EventDetailsViewer from '../../../components/EventDetailsViewer.jsx';
 
 const EVENT_TYPE_LABELS = {
   upscale_failure: 'Upscale Failure',
@@ -140,12 +141,7 @@ export default async function SystemEventsPage({ searchParams }) {
                   </td>
                   <td className="px-4 py-3">
                     {event.details && Object.keys(event.details).length > 0 && (
-                      <details className="cursor-pointer">
-                        <summary className="text-xs text-blue-600 hover:underline select-none">View</summary>
-                        <pre className="mt-1 text-xs bg-gray-50 border border-gray-200 rounded p-2 overflow-auto max-w-sm max-h-40 whitespace-pre-wrap break-all">
-                          {JSON.stringify(event.details, null, 2)}
-                        </pre>
-                      </details>
+                      <EventDetailsViewer details={event.details} />
                     )}
                   </td>
                 </tr>
