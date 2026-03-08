@@ -7,6 +7,7 @@ import sharp from 'sharp';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60; // seconds
+export const maxRequestBodySize = '400mb';
 
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'tiff', 'webp', 'bmp'];
 const MAX_FILE_SIZE = 400 * 1024 * 1024; // 400MB

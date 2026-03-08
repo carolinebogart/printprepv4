@@ -718,37 +718,6 @@ export default function CropTool({
       return;
     }
 
-    // Kick off timed activity log simulation
-    const totalFiles = allCropData.reduce((n, c) => n + c.sizes.length, 0);
-    const timers = [];
-
-    // Phase 1: Preparing image
-    setActivityLog([{ text: 'Preparing image...', done: false }]);
-
-    // Phase 2: Generating outputs (1.5s)
-    timers.push(setTimeout(() => {
-      setActivityLog([
-        { text: 'Preparing image...', done: true },
-        { text: 'Generating outputs...', done: false },
-      ]);
-    }, 1500));
-
-    // Phase 3: Tick file counter every 1.5s starting at 2s
-    let filesDone = 0;
-    timers.push(setTimeout(() => {
-      const tick = setInterval(() => {
-        filesDone = Math.min(filesDone + 1, totalFiles - 1);
-        setActivityLog([
-          { text: 'Preparing image...', done: true },
-          { text: 'Generating outputs...', done: true },
-          { text: `${filesDone} of ${totalFiles} files done...`, done: false },
-        ]);
-      }, 1500);
-      timers.push(tick);
-    }, 2000));
-
-    const clearTimers = () => timers.forEach((t) => clearTimeout(t));
-
     try {
       const res = await fetch('/api/process', {
         method: 'POST',
@@ -756,27 +725,77 @@ export default function CropTool({
         body: JSON.stringify({ imageId, cropConfigs: allCropData, removeBackground: removeBg }),
       });
 
-      const data = await res.json();
-      clearTimers();
-
+      // Pre-flight errors (auth, credits, validation) return normal JSON
       if (!res.ok) {
+        const data = await res.json();
         setError(data.error || 'Processing failed.');
         setProcessing(false);
         setActivityLog([]);
         return;
       }
 
-      // Signal the header credits badge to refresh
-      window.dispatchEvent(new Event('credits-updated'));
-      setSuccessData({
-        imageId,
-        expiresAt: data.expiresAt,
-        count: data.successfulOutputs,
-        warnings: data.warnings || [],
-      });
-      setProcessing(false);
+      // Read SSE stream
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep incomplete last line
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          let event;
+          try {
+            event = JSON.parse(line.slice(6));
+          } catch {
+            continue;
+          }
+
+          if (event.type === 'phase') {
+            setActivityLog((prev) => {
+              // Mark all existing in-progress entries done, then append the new phase
+              const updated = prev.map((entry) => ({ ...entry, done: true }));
+              const alreadyHas = updated.some((e) => e.text === event.message);
+              return alreadyHas ? updated : [...updated, { text: event.message, done: false }];
+            });
+          } else if (event.type === 'file') {
+            const fileText = `${event.index} of ${event.total} files done...`;
+            setActivityLog((prev) => {
+              // Mark all non-counter entries done; update or append the file counter
+              const withPhasesDone = prev.map((entry) =>
+                entry.text.includes('files done') ? entry : { ...entry, done: true }
+              );
+              const hasCounter = withPhasesDone.some((e) => e.text.includes('files done'));
+              if (hasCounter) {
+                return withPhasesDone.map((e) =>
+                  e.text.includes('files done') ? { text: fileText, done: false } : e
+                );
+              }
+              return [...withPhasesDone, { text: fileText, done: false }];
+            });
+          } else if (event.type === 'done') {
+            const data = event.result;
+            window.dispatchEvent(new Event('credits-updated'));
+            setSuccessData({
+              imageId,
+              expiresAt: data.expiresAt,
+              count: data.successfulOutputs,
+              warnings: data.warnings || [],
+            });
+            setProcessing(false);
+          } else if (event.type === 'error') {
+            setError(event.error || 'Processing failed.');
+            setProcessing(false);
+            setActivityLog([]);
+          }
+        }
+      }
     } catch {
-      clearTimers();
       setError('Processing failed. Please try again.');
       setProcessing(false);
       setActivityLog([]);
